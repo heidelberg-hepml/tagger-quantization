@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=68", "wheel>=0.42"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tagger-quantization"
+version = "1.0.0"
+requires-python = ">=3.10"
+
+[tool.setuptools.package-dir]
+"" = "experiments"
+
+[tool.setuptools.packages.find]
+where = ["experiments"]

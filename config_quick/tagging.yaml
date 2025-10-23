@@ -1,0 +1,25 @@
+data:
+ add_tagging_features_framesnet: true
+ boost_jet: false
+ beam_reference: lightlike
+ two_beams: true
+ add_time_reference: true
+ mass_reg: 5e-3
+ spurion_scale: 1
+ momentum_float64: true
+
+evaluation:
+ batchsize: 128
+ save_roc: false
+ eval_set: [train, test, val]
+
+plotting:
+ roc: true
+ loss: true
+ score: true
+
+defaults:
+ - default
+ - training: default
+ - model: tag_transformer
+ - _self_

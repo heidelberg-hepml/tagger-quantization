@@ -1,0 +1,34 @@
+# torch-cluster requires pre-build torch wheels
+--find-links https://data.pyg.org/whl/torch-2.0.0+cpu.html
+
+# experiment management
+hydra-core
+mlflow==2.4.1
+pytest
+black==22.3.0
+
+# deep learning
+torch>=2.0.0
+torch-geometric>=2.4.0
+torch-ema
+pytorch_optimizer>=3.2.0
+
+# standard science stack
+numpy
+matplotlib
+
+# project-specific
+xformers
+torch-cluster>=1.6.3
+torchdiffeq
+lgatr[xformers_attention]>=1.2.0
+lloca
+
+#weaver packages
+tqdm>=4.41.0
+PyYAML>=5.4
+awkward0>=0.15.5
+uproot>=4.2.0,<5.2.0
+awkward>=1.8.0
+lz4
+xxhash

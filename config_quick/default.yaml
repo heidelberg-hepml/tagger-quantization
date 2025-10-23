@@ -1,0 +1,34 @@
+exp_name: ???
+exp_type: ???
+run_name: null
+base_dir: .
+
+jobid: null
+seed: null
+debug: false
+use_float64: false
+float32_matmul_precision: highest
+
+warm_start_idx: null
+save: true
+use_mlflow: true
+save_source: true
+ema: false
+ema_decay: 0.999
+
+train: true
+evaluate: true
+evaluation:
+ batchsize: 1024
+
+plot: true
+plotting:
+ loss: true
+
+mlflow:
+ db: '${base_dir}/runs/${exp_name}/mlflow/mlflow.db'
+ artifacts: '${base_dir}/runs/${exp_name}/mlflow/artifacts'
+
+defaults:
+ - hydra
+ - _self_

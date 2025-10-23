@@ -1,0 +1,37 @@
+exp_type: topxltagging
+exp_name: topxl_debug
+
+data:
+ data_dir: /remote/gpu06/spinner/lorentz-frames/data/topxl
+ features: default
+ data_config: null
+ add_scalar_features: True
+ train_files_range: [0, 500]
+ test_files_range: [500, 625]
+ val_files_range: [625, 675]
+
+topxl_params:
+ num_workers: 2
+ fetch_step: 0.01
+ extra_selection: null
+ extra-test-selection: null
+ fetch_by_files: false
+ in_memory: False
+ not_remake_weights: False
+ steps_per_epoch: null
+ steps_per_epoch_val: null
+ events_per_file: 100000
+ async_load: true
+ split_num: 1
+
+evaluation:
+ batchsize: 2048
+ eval_set: [test]
+
+plotting:
+ roc: true
+ score: true
+
+defaults:
+ - tagging
+ - _self_

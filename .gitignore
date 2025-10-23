@@ -1,0 +1,24 @@
+# pytest
+.coverage
+.pytest
+.pytest_cache
+
+# Python
+*__pycache__*
+*.egg-info
+*.py[cod]
+*.sh.e*
+*.sh.o*
+
+venv/
+runs/
+mlruns/
+outputs/
+scripts/
+data/jetclass/
+*~
+*.hdf5
+*.npy
+*.npz
+*.ipynb_checkpoint*
+README.md.backup
