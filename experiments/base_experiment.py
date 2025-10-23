@@ -19,6 +19,7 @@ import experiments.logger
 from experiments.logger import LOGGER, MEMORY_HANDLER, FORMATTER, RankFilter
 from experiments.mlflow import log_mlflow
 from experiments.ranger import Ranger
+from experiments.parq import init_parq_param_groups, init_parq_optimizer
 
 # set to 'True' to debug autograd issues (slows down code)
 torch.autograd.set_detect_anomaly(False)
@@ -340,6 +341,12 @@ class BaseExperiment:
         )
 
     def _init_optimizer(self, param_groups=None):
+        modelname = self.cfg.model.net._target_.rsplit(".", 1)[-1]
+        if self.cfg.parq.use:
+            param_groups = init_parq_param_groups(
+                self.model, self.cfg, modelname, param_groups
+            )
+
         if param_groups is None:
             param_groups = [
                 {
@@ -392,6 +399,8 @@ class BaseExperiment:
         LOGGER.debug(
             f"Using optimizer {self.cfg.training.optimizer} with lr={self.cfg.training.lr}"
         )
+        if self.cfg.parq.use:
+            self.optimizer = init_parq_optimizer(self.optimizer, self.cfg)
 
         # load existing optimizer if specified
         if self.warm_start:

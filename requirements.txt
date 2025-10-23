@@ -32,3 +32,6 @@ uproot>=4.2.0,<5.2.0
 awkward>=1.8.0
 lz4
 xxhash
+
+#quantization extras
+git+https://github.com/facebookresearch/parq
