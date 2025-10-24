@@ -9,9 +9,6 @@ from experiments.tagging.experiment import TopTaggingExperiment
 from experiments.tagging.finetuneexperiment import TopTaggingFineTuneExperiment
 from experiments.tagging.topxlexperiment import TopXLTaggingExperiment
 from experiments.tagging.jetclassexperiment import JetClassTaggingExperiment
-from experiments.amplitudes.experiment import AmplitudeExperiment
-from experiments.amplitudes.experimentxl import AmplitudeXLExperiment
-from experiments.eventgen.processes import ttbarExperiment
 
 
 @hydra.main(config_path="config_quick", config_name="toptagging", version_base=None)
@@ -56,12 +53,6 @@ def ddp_worker(rank, cfg):
         constructor = TopXLTaggingExperiment
     elif cfg.exp_type == "jctagging":
         constructor = JetClassTaggingExperiment
-    elif cfg.exp_type == "amplitudes":
-        constructor = AmplitudeExperiment
-    elif cfg.exp_type == "amplitudesxl":
-        constructor = AmplitudeXLExperiment
-    elif cfg.exp_type == "ttbar":
-        constructor = ttbarExperiment
     else:
         raise ValueError(f"exp_type {cfg.exp_type} not implemented")
 
