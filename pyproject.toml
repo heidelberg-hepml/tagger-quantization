@@ -7,8 +7,7 @@ name = "tagger-quantization"
 version = "1.0.0"
 requires-python = ">=3.11"
 
-[tool.setuptools.package-dir]
-"" = "experiments"
-
 [tool.setuptools.packages.find]
-where = ["experiments"]
+where = ["."]
+include = ["experiments*"]
+exclude = ["tests*"]
