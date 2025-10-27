@@ -9,6 +9,28 @@ debug: false
 use_float64: false
 float32_matmul_precision: highest
 
+parq:
+ use: false
+ bits: 0
+ uniform: false
+
+ prox_map: parq
+ start_step: 0
+ final_hard_steps: 0
+ steepness: 100
+
+ inout: false
+ attn: true
+ mlp: true
+ bias: false
+
+ warmup_steps: 0
+ quant_period: 10
+ quant_per_channel: false
+ quant_shrink: false
+ anneal_wd_frac: 0.0
+ nm_gamma: 0.0
+
 warm_start_idx: null
 save: true
 use_mlflow: true
