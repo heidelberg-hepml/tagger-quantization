@@ -24,7 +24,7 @@ parq:
  mlp: true
  bias: false
 
- warmup_steps: 0
+ warmup_steps: 1 # > 0 to avoid empty optimizer assertion for Ranger
  quant_period: 10
  quant_per_channel: false
  quant_shrink: false
