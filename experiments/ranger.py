@@ -167,13 +167,13 @@ class Lookahead(Optimizer):
         if not 1 <= k:
             raise ValueError(f"Invalid lookahead steps: {k}")
         self.optimizer = optimizer
+        # ensure methods of the inner optimizer are passed
+        super().__init__(optimizer.param_groups, optimizer.defaults)
         self.alpha = alpha
         self.k = k
         self.step_counter = 0
         assert pullback_momentum in ["reset", "pullback", "none"]
         self.pullback_momentum = pullback_momentum
-        self.defaults = optimizer.defaults
-        self.reset()
 
     def reset(self):
         self.param_groups = self.optimizer.param_groups
@@ -231,6 +231,14 @@ class Lookahead(Optimizer):
         loss = self.optimizer.step(closure)
         self.step_counter += 1
 
+        # if state is empty, initialize cached_params
+        if len(self.state) == 0:
+            for group in self.optimizer.param_groups:
+                for p in group["params"]:
+                    param_state = self.state[p]
+                    param_state["cached_params"] = torch.zeros_like(p.data)
+                    param_state["cached_params"].copy_(p.data)
+
         if self.step_counter >= self.k:
             self.step_counter = 0
             # Lookahead and cache the current optimizer parameters
@@ -243,10 +251,10 @@ class Lookahead(Optimizer):
                     param_state["cached_params"].copy_(p.data)
                     if self.pullback_momentum == "pullback":
                         internal_momentum = self.optimizer.state[p]["momentum_buffer"]
-                        self.optimizer.state[p][
-                            "momentum_buffer"
-                        ] = internal_momentum.mul_(self.alpha).add_(
-                            param_state["cached_mom"], alpha=1.0 - self.alpha
+                        self.optimizer.state[p]["momentum_buffer"] = (
+                            internal_momentum.mul_(self.alpha).add_(
+                                param_state["cached_mom"], alpha=1.0 - self.alpha
+                            )
                         )
                         param_state["cached_mom"] = self.optimizer.state[p][
                             "momentum_buffer"
