@@ -6,11 +6,17 @@ from parq.optim import (
     ProxSoftQuant,
     build_quant_optimizer,
 )
-from parq.quant import LSBQuantizer, UnifQuantizer
+from parq.quant import LSBQuantizer, UnifQuantizer, TernaryUnifQuantizer
 
 
 def init_parq_optimizer(base_optimizer, cfg):
-    quantizer = UnifQuantizer() if cfg.parq.uniform else LSBQuantizer()
+    if cfg.parq.uniform:
+        if cfg.parq.bits == 0:
+            quantizer = TernaryUnifQuantizer()
+        else:
+            quantizer = UnifQuantizer()
+    else:
+        quantizer = LSBQuantizer()
 
     start_step = cfg.parq.start_step
     end_step = cfg.training.iterations - cfg.parq.final_hard_steps
