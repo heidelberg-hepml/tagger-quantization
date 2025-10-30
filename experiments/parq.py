@@ -76,50 +76,11 @@ def init_param_groups_transformer(model, cfg):
         params_attn += list(block.attention.parameters())
         params_mlp += list(block.mlp.parameters())
 
-    def include_params(in_list, out_quant, out_unquant):
-        if cfg.parq.bias:
-            out_quant += in_list
-        else:
-            is_bias = lambda param: param.ndim == 1
-            out_quant += [p for p in in_list if not is_bias(p)]
-            out_unquant += [p for p in in_list if is_bias(p)]
-
-    # divide backbone parameters
-    params_q = []
     params_noq = []
-    if cfg.parq.inout:
-        include_params(params_inout, params_q, params_noq)
-    else:
-        params_noq += params_inout
-    if cfg.parq.attn:
-        include_params(params_attn, params_q, params_noq)
-    else:
-        params_noq += params_attn
-    if cfg.parq.mlp:
-        include_params(params_mlp, params_q, params_noq)
-    else:
-        params_noq += params_mlp
-
-    param_groups = [
-        {
-            # never quantize framesnet
-            "params": list(model.framesnet.parameters()),
-            "lr": cfg.training.lr_factor_framesnet * cfg.training.lr,
-            "weight_decay": cfg.training.weight_decay_framesnet,
-        },
-        {
-            "params": params_q,
-            "lr": cfg.training.lr,
-            "weight_decay": cfg.training.weight_decay,
-            "quant_bits": cfg.parq.bits,
-        },
-        {
-            "params": params_noq,
-            "lr": cfg.training.lr,
-            "weight_decay": cfg.training.weight_decay,
-        },
-    ]
-    return param_groups
+    params_framesnet = list(model.framesnet.parameters())
+    return param_groups_transformer_helper(
+        params_framesnet, params_inout, params_attn, params_mlp, params_noq, cfg
+    )
 
 
 def init_param_groups_ParticleTransformer(model, cfg):
@@ -149,6 +110,15 @@ def init_param_groups_ParticleTransformer(model, cfg):
             + list(block.post_fc_norm.parameters())
         )
 
+    params_framesnet = list(model.framesnet.parameters())
+    return param_groups_transformer_helper(
+        params_framesnet, params_inout, params_attn, params_mlp, params_noq, cfg
+    )
+
+
+def param_groups_transformer_helper(
+    params_framesnet, params_inout, params_attn, params_mlp, params_noq, cfg
+):
     is_bias = lambda param: param.ndim == 1
 
     def include_params(in_list, out_quant_wd, out_quant_nowd, out_unquant):
@@ -181,7 +151,7 @@ def init_param_groups_ParticleTransformer(model, cfg):
     param_groups = [
         {
             # never quantize framesnet
-            "params": list(model.framesnet.parameters()),
+            "params": params_framesnet,
             "lr": cfg.training.lr_factor_framesnet * cfg.training.lr,
             "weight_decay": cfg.training.weight_decay_framesnet,
         },
