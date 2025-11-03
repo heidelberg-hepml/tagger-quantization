@@ -23,4 +23,7 @@ python -m venv venv
 source venv/bin/activate
 pip install -e .
 pip install -r requirements.txt
+pre-commit install
 ```
+
+The pre-commit hook will automatically run on each commit. You can also run it manually with ```pre-commit run --all-files```.
