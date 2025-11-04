@@ -5,19 +5,32 @@ from parq.optim import (
     ProxSoftQuant,
     build_quant_optimizer,
 )
-from parq.quant import LSBQuantizer, TernaryUnifQuantizer, UnifQuantizer
+from parq.quant import (
+    LSBQuantizer,
+    UnifQuantizer,
+    TernaryUnifQuantizer,
+    MaxUnifQuantizer,
+)
+from parq.quant.uniform import AsymUnifQuantizer
 
-from experiments.logger import LOGGER
+
+def get_quantizer(name, bits):
+    if name == "lsbq":
+        return LSBQuantizer()
+    elif bits == 0:
+        return TernaryUnifQuantizer()
+    elif name == "uniform":
+        return UnifQuantizer()
+    elif name == "asymuniform":
+        return AsymUnifQuantizer()
+    elif name == "maxuniform":
+        return MaxUnifQuantizer()
+    else:
+        raise ValueError(f"Unknown quantizer {name}")
 
 
 def init_parq_optimizer(base_optimizer, cfg):
-    if cfg.parq.uniform:
-        if cfg.parq.bits == 0:
-            quantizer = TernaryUnifQuantizer()
-        else:
-            quantizer = UnifQuantizer()
-    else:
-        quantizer = LSBQuantizer()
+    quantizer = get_quantizer(cfg.parq.quantizer, cfg.parq.bits)
 
     start_step = cfg.parq.start_step
     end_step = cfg.training.iterations - cfg.parq.final_hard_steps
@@ -74,7 +87,9 @@ def init_parq_param_groups(model, cfg, modelname, param_groups=None):
 
 def init_param_groups_transformer(model, cfg):
     # collect parameters in groups
-    params_inout = list(model.net.linear_in.parameters()) + list(model.net.linear_out.parameters())
+    params_inout = list(model.net.linear_in.parameters()) + list(
+        model.net.linear_out.parameters()
+    )
     params_attn = []
     params_mlp = []
     for block in model.net.blocks:
