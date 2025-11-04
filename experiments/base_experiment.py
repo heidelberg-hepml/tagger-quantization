@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.distributed as dist
 
-import os, time
+import os, time, random
 import zipfile
 import logging
 import resource
@@ -229,7 +229,7 @@ class BaseExperiment:
         return run_name
 
     def _init_mlflow(self):
-        time.sleep(np.random.rand())  # avoid db creation conflicts
+        time.sleep(random.random())  # avoid db creation conflicts
         # mlflow tracking location
         Path(self.cfg.mlflow.db).parent.mkdir(exist_ok=True)
         mlflow.set_tracking_uri(f"sqlite:///{Path(self.cfg.mlflow.db).resolve()}")
