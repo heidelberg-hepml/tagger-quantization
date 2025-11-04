@@ -20,6 +20,7 @@ from experiments.logger import LOGGER, MEMORY_HANDLER, FORMATTER, RankFilter
 from experiments.mlflow import log_mlflow
 from experiments.ranger import Ranger
 from experiments.parq import init_parq_param_groups, init_parq_optimizer
+from experiments.inputquant import input_quantize
 
 # set to 'True' to debug autograd issues (slows down code)
 torch.autograd.set_detect_anomaly(False)
@@ -124,6 +125,10 @@ class BaseExperiment:
         LOGGER.info(
             f"Frames approach: {self.model.framesnet} ({num_parameters_framesnet} learnable parameters)"
         )
+
+        if self.cfg.inputquant.use:
+            modelname = self.cfg.model.net._target_.rsplit(".", 1)[-1]
+            input_quantize(self.model, modelname, self.cfg.inputquant)
 
         if self.cfg.ema:
             LOGGER.info(f"Using EMA for validation and eval")
