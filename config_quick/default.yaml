@@ -31,6 +31,13 @@ parq:
  anneal_wd_frac: 0.0
  nm_gamma: 0.0
 
+inputquant:
+ use: false
+ bits: 8
+ quantizer: uniform
+ mlp: true
+ attn: true
+
 warm_start_idx: null
 save: true
 use_mlflow: false
