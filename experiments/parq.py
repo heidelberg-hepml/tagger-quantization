@@ -12,7 +12,7 @@ from parq.quant import (
     MaxUnifQuantizer,
 )
 from parq.quant.uniform import AsymUnifQuantizer
-from floatquant import FloatQuantizer
+from experiments.floatquant import FloatQuantizer, TorchFloatQuantizer
 
 
 def get_quantizer(name, bits):
@@ -31,7 +31,10 @@ def get_quantizer(name, bits):
         em = name.split("e")[-1]
         e, m = em.split("m")
         assert int(e) + int(m) + 1 == bits, "Bits do not match exponent and mantissa"
-        return FloatQuantizer(int(e), int(m))
+        if "torch" in name:
+            return TorchFloatQuantizer(int(e), int(m))
+        else:
+            return FloatQuantizer(int(e), int(m))
     else:
         raise ValueError(f"Unknown quantizer {name}")
 
