@@ -12,9 +12,11 @@ from parq.quant import (
     MaxUnifQuantizer,
 )
 from parq.quant.uniform import AsymUnifQuantizer
+from floatquant import FloatQuantizer
 
 
 def get_quantizer(name, bits):
+    name = name.lower()
     if name == "lsbq":
         return LSBQuantizer()
     elif bits == 0:
@@ -25,6 +27,11 @@ def get_quantizer(name, bits):
         return AsymUnifQuantizer()
     elif name == "maxuniform":
         return MaxUnifQuantizer()
+    elif "float" in name:  # e.g. floate5m2 or Float-E4M3
+        em = name.split("e")[-1]
+        e, m = em.split("m")
+        assert int(e) + int(m) + 1 == bits, "Bits do not match exponent and mantissa"
+        return FloatQuantizer(int(e), int(m))
     else:
         raise ValueError(f"Unknown quantizer {name}")
 
