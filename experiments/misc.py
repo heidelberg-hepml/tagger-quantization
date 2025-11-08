@@ -2,10 +2,6 @@ from collections.abc import Mapping
 
 import torch
 from torch.nn.attention.flex_attention import create_block_mask, BlockMask
-from lloca.backbone.attention_backends.xformers_attention import (
-    get_xformers_attention_mask,
-    BlockDiagonalMask,
-)
 
 
 def get_device() -> torch.device:
