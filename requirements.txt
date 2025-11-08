@@ -21,8 +21,8 @@ matplotlib
 # project-specific
 xformers
 torch-cluster>=1.6.3
-lgatr[xformers_attention]
-lloca[xformers_attention]
+lgatr[flex_attention]
+lloca[flex_attention]
 
 #weaver packages
 tqdm>=4.41.0

@@ -6,15 +6,13 @@ from torch_geometric.utils import to_dense_batch
 from lgatr import embed_vector, extract_scalar
 
 from experiments.tagging.embedding import get_tagging_features
+from experiments.misc import get_flex_attention_mask
 from lloca.framesnet.frames import Frames
 from lloca.utils.utils import (
     get_ptr_from_batch,
     get_batch_from_ptr,
     get_edge_index_from_ptr,
     get_edge_attr,
-)
-from lloca.backbone.attention_backends.xformers_attention import (
-    get_xformers_attention_mask,
 )
 from lloca.utils.lorentz import lorentz_eye
 from lloca.reps.tensorreps import TensorReps
@@ -221,7 +219,7 @@ class TransformerWrapper(AggregatedTaggerWrapper):
     def forward(self, embedding):
         # precompute attention mask to avoid cudaStreamSynchronize
         # from .tolist() in get_xformers_attention_mask
-        dtype = embedding["scalars"].dtype
+        device = embedding["scalars"].device
         batch_withspurions = embedding["batch"]
         is_spurion = embedding["is_spurion"]
         nospurion_idxs = (~is_spurion).nonzero(as_tuple=False).squeeze(-1)
@@ -233,10 +231,9 @@ class TransformerWrapper(AggregatedTaggerWrapper):
             ptr = ptr.clone()
             ptr[1:] = ptr[1:] + (torch.arange(batchsize, device=ptr.device) + 1)
             batch = get_batch_from_ptr(ptr)
-        mask = get_xformers_attention_mask(
+        mask = get_flex_attention_mask(
             batch,
-            materialize=batch.device == torch.device("cpu"),
-            dtype=dtype,
+            device=device,
         )
 
         (
@@ -285,11 +282,7 @@ class TransformerWrapper(AggregatedTaggerWrapper):
         frames = frames.reshape(1, *frames.shape)
 
         # network
-        kwargs = {
-            "attn_mask"
-            if features_local.device == torch.device("cpu")
-            else "attn_bias": mask
-        }
+        kwargs = {"block_mask": mask}
         with torch.autocast("cuda", enabled=self.use_amp):
             outputs = self.net(inputs=features_local, frames=frames, **kwargs)
 
@@ -443,16 +436,11 @@ class LGATrWrapper(nn.Module):
         fourmomenta = fourmomenta.unsqueeze(0).to(scalars.dtype)
         scalars = scalars.unsqueeze(0)
 
-        mask = get_xformers_attention_mask(
+        mask = get_flex_attention_mask(
             batch,
-            materialize=fourmomenta.device == torch.device("cpu"),
-            dtype=fourmomenta.dtype,
+            device=fourmomenta.device,
         )
-        kwargs = {
-            "attn_mask"
-            if fourmomenta.device == torch.device("cpu")
-            else "attn_bias": mask
-        }
+        kwargs = {"block_mask": mask}
 
         mv = embed_vector(fourmomenta).unsqueeze(-2)
         s = scalars if scalars.shape[-1] > 0 else None
