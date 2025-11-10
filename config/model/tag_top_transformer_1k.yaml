@@ -11,8 +11,8 @@ net:
  _partial_: true
 
  in_channels: null
- attn_reps: "1x0n+1x1n" # reps can be varied, but number of channels should stay fixed
- out_channels: null
+ attn_reps: "4x0n+1x1n" # reps can be varied, but number of channels should stay fixed
+ out_channels: nulln
 
  num_blocks: 1
  num_heads: 2
