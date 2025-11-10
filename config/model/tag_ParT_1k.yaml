@@ -3,6 +3,7 @@ in_channels: null
 out_channels: null
 use_amp: false
 add_fourmomenta_backbone: false
+only_ztransform_tagging_features: null
 
 net:
  _target_: lloca.backbone.particletransformer.ParticleTransformer
@@ -10,11 +11,11 @@ net:
  input_dim: null
  num_classes: null
 
- attn_reps: 8x0n+2x1n
- num_layers: 4
- num_heads: 4
- embed_dims: [64, 256, 64]
- pair_embed_dims: [32, 32, 32]
+ attn_reps: 4x0n+1x1n
+ num_layers: 1
+ num_heads: 1
+ embed_dims: [8,16,8]
+ pair_embed_dims: [4,4,4]
 
  use_amp: ${model.use_amp}
  trim: false
