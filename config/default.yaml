@@ -37,6 +37,8 @@ inputquant:
  quantizer: uniform
  mlp: true
  attn: true
+ dim: null
+ quantize_output: true
 
 warm_start_idx: null
 save: true
