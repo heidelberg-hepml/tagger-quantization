@@ -6,6 +6,7 @@ from torch_geometric.utils import to_dense_batch
 from lgatr import embed_vector, extract_scalar
 
 from experiments.tagging.embedding import get_tagging_features
+from experiments.misc import get_attention_mask
 from lloca.framesnet.frames import Frames
 from lloca.utils.utils import (
     get_ptr_from_batch,
@@ -210,11 +211,13 @@ class TransformerWrapper(AggregatedTaggerWrapper):
         net,
         *args,
         use_amp=False,
+        attention_backend="xformers",
         mean_aggregation=True,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.use_amp = use_amp
+        self.attention_backend = attention_backend
         self.mean_aggregation = mean_aggregation
         self.net = net(in_channels=self.in_channels, out_channels=self.out_channels)
 
@@ -222,6 +225,7 @@ class TransformerWrapper(AggregatedTaggerWrapper):
         # precompute attention mask to avoid cudaStreamSynchronize
         # from .tolist() in get_xformers_attention_mask
         dtype = embedding["scalars"].dtype
+        device = embedding["scalars"].device
         batch_withspurions = embedding["batch"]
         is_spurion = embedding["is_spurion"]
         nospurion_idxs = (~is_spurion).nonzero(as_tuple=False).squeeze(-1)
@@ -233,10 +237,11 @@ class TransformerWrapper(AggregatedTaggerWrapper):
             ptr = ptr.clone()
             ptr[1:] = ptr[1:] + (torch.arange(batchsize, device=ptr.device) + 1)
             batch = get_batch_from_ptr(ptr)
-        mask = get_xformers_attention_mask(
+        mask_kwarg = get_attention_mask(
             batch,
-            materialize=batch.device == torch.device("cpu"),
             dtype=dtype,
+            device=device,
+            attention_backend=self.attention_backend,
         )
 
         (
@@ -285,13 +290,8 @@ class TransformerWrapper(AggregatedTaggerWrapper):
         frames = frames.reshape(1, *frames.shape)
 
         # network
-        kwargs = {
-            "attn_mask"
-            if features_local.device == torch.device("cpu")
-            else "attn_bias": mask
-        }
         with torch.autocast("cuda", enabled=self.use_amp):
-            outputs = self.net(inputs=features_local, frames=frames, **kwargs)
+            outputs = self.net(inputs=features_local, frames=frames, **mask_kwarg)
 
         # aggregation
         outputs = outputs[0, ...]
@@ -362,9 +362,11 @@ class LGATrWrapper(nn.Module):
         out_channels,
         mean_aggregation=False,
         use_amp=False,
+        attention_backend="xformers",
     ):
         super().__init__()
         self.use_amp = use_amp
+        self.attention_backend = attention_backend
         self.net = net(out_mv_channels=out_channels)
         self.aggregator = MeanAggregation() if mean_aggregation else None
 
@@ -443,22 +445,18 @@ class LGATrWrapper(nn.Module):
         fourmomenta = fourmomenta.unsqueeze(0).to(scalars.dtype)
         scalars = scalars.unsqueeze(0)
 
-        mask = get_xformers_attention_mask(
+        mask_kwarg = get_attention_mask(
             batch,
-            materialize=fourmomenta.device == torch.device("cpu"),
-            dtype=fourmomenta.dtype,
+            dtype=scalars.dtype,
+            device=scalars.device,
+            attention_backend=self.attention_backend,
         )
-        kwargs = {
-            "attn_mask"
-            if fourmomenta.device == torch.device("cpu")
-            else "attn_bias": mask
-        }
 
         mv = embed_vector(fourmomenta).unsqueeze(-2)
         s = scalars if scalars.shape[-1] > 0 else None
 
         with torch.autocast("cuda", enabled=self.use_amp):
-            mv_outputs, _ = self.net(mv, s, **kwargs)
+            mv_outputs, _ = self.net(mv, s, **mask_kwarg)
         out = extract_scalar(mv_outputs)[0, :, :, 0]
 
         if self.aggregator is not None:

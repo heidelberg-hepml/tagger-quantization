@@ -2,7 +2,6 @@ _target_: experiments.tagging.wrappers.LGATrWrapper
 mean_aggregation: false
 out_channels: null
 use_amp: false
-attention_backend: xformers
 
 net:
  _target_: lgatr.LGATr
@@ -12,14 +11,14 @@ net:
  in_s_channels: null
  out_mv_channels: null
  out_s_channels: null
- hidden_mv_channels: 4
- hidden_s_channels: 16
+ hidden_mv_channels: 2
+ hidden_s_channels: 4
 
  num_blocks: 1
  attention:
   num_heads: 2
   multi_query: false
-  increase_hidden_channels: 2
+  increase_hidden_channels: 1
   head_scale: true
  mlp:
   activation: gelu
