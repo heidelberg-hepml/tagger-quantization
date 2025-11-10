@@ -9,7 +9,7 @@ debug: false
 use_float64: false
 float32_matmul_precision: highest
 
-parq:
+weightquant:
  use: false
  bits: 0
  quantizer: lsbq

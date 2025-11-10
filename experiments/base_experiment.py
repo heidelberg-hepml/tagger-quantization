@@ -347,7 +347,7 @@ class BaseExperiment:
 
     def _init_optimizer(self, param_groups=None):
         modelname = self.cfg.model.net._target_.rsplit(".", 1)[-1]
-        if self.cfg.parq.use:
+        if self.cfg.weightquant.use:
             param_groups = init_parq_param_groups(
                 self.model, self.cfg, modelname, param_groups
             )
@@ -421,7 +421,7 @@ class BaseExperiment:
         LOGGER.debug(
             f"Using optimizer {self.cfg.training.optimizer} with lr={self.cfg.training.lr}"
         )
-        if self.cfg.parq.use:
+        if self.cfg.weightquant.use:
             self.optimizer = init_parq_optimizer(self.optimizer, self.cfg)
 
         # load existing optimizer if specified
