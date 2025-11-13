@@ -5,9 +5,23 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tagger-quantization"
 version = "1.0.0"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["experiments*"]
 exclude = ["tests*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+exclude=["experiments/baselines", "experiments/tagging/miniweaver"]
+extend-exclude = ["data/", "runs/", "notebooks/"]
+
+[tool.ruff.lint]
+select = ["E","F","I","B","UP"]
+ignore = [
+    "E501", # no complaints from line length
+    "F401", # allow importing unused modules (for __init__.py)
+    "B006", # allow mutable default function arguments
+]

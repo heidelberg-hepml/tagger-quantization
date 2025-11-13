@@ -7,7 +7,7 @@ from .perm_equiv_models import Net2to2, Eq2to0
 from .generic_layers import InputEncoder, GInvariants, MyLinear, MessageNet, BasicMLP
 
 
-class PELICAN(nn.Module):
+class PELICANOfficial(nn.Module):
     def __init__(
         self,
         num_scalars,
@@ -16,9 +16,7 @@ class PELICAN(nn.Module):
         num_channels_2,
         mlp_out=True,
     ):
-        assert (
-            num_scalars == 0
-        ), "Scalar inputs for PELICAN not supported yet (non-trivial)"
+        assert num_scalars == 0, "Scalar inputs for PELICAN not supported yet (non-trivial)"
 
         # use the typical model setup in the pelican repo
         num_channels_m = [[num_channels_1]] * 5

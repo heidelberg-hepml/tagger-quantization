@@ -1,4 +1,3 @@
-from experiments.logger import LOGGER
 from parq.optim import (
     ProxBinaryRelax,
     ProxHardQuant,
@@ -6,7 +5,9 @@ from parq.optim import (
     ProxSoftQuant,
     build_quant_optimizer,
 )
-from parq.quant import LSBQuantizer, UnifQuantizer, TernaryUnifQuantizer
+from parq.quant import LSBQuantizer, TernaryUnifQuantizer, UnifQuantizer
+
+from experiments.logger import LOGGER
 
 
 def init_parq_optimizer(base_optimizer, cfg):
@@ -73,9 +74,7 @@ def init_parq_param_groups(model, cfg, modelname, param_groups=None):
 
 def init_param_groups_transformer(model, cfg):
     # collect parameters in groups
-    params_inout = list(model.net.linear_in.parameters()) + list(
-        model.net.linear_out.parameters()
-    )
+    params_inout = list(model.net.linear_in.parameters()) + list(model.net.linear_out.parameters())
     params_attn = []
     params_mlp = []
     for block in model.net.blocks:
@@ -125,7 +124,8 @@ def init_param_groups_ParticleTransformer(model, cfg):
 def param_groups_transformer_helper(
     params_framesnet, params_inout, params_attn, params_mlp, params_noq, cfg
 ):
-    is_bias = lambda param: param.ndim == 1
+    def is_bias(param):
+        return param.ndim == 1
 
     def include_params(in_list, out_quant_wd, out_quant_nowd, out_unquant):
         out_quant_wd += [p for p in in_list if not is_bias(p)]

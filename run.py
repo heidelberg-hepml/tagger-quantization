@@ -1,14 +1,15 @@
-import hydra
-import os
 import datetime
+import os
+
+import hydra
 import torch
-import torch.multiprocessing as mp
 import torch.distributed as dist
+import torch.multiprocessing as mp
 
 from experiments.tagging.experiment import TopTaggingExperiment
 from experiments.tagging.finetuneexperiment import TopTaggingFineTuneExperiment
-from experiments.tagging.topxlexperiment import TopXLTaggingExperiment
 from experiments.tagging.jetclassexperiment import JetClassTaggingExperiment
+from experiments.tagging.toptagxlexperiment import TopTagXLExperiment
 
 
 @hydra.main(config_path="config_quick", config_name="toptagging", version_base=None)
@@ -23,7 +24,7 @@ def main(cfg):
         os.environ.setdefault("OMP_NUM_THREADS", "1")
 
         _set_common_env(world_size)
-        mp.spawn(ddp_worker, nprocs=world_size, args=(cfg,), join=True, daemon=False)
+        mp.spawn(ddp_worker, nprocs=world_size, args=(cfg,))
     else:
         # no GPU or only one GPU -> run on main process
         ddp_worker(rank=0, cfg=cfg)
@@ -49,8 +50,8 @@ def ddp_worker(rank, cfg):
         constructor = TopTaggingExperiment
     elif cfg.exp_type == "toptaggingft":
         constructor = TopTaggingFineTuneExperiment
-    elif cfg.exp_type == "topxltagging":
-        constructor = TopXLTaggingExperiment
+    elif cfg.exp_type == "toptagxl":
+        constructor = TopTagXLExperiment
     elif cfg.exp_type == "jctagging":
         constructor = JetClassTaggingExperiment
     else:

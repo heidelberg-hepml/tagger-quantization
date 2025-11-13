@@ -1,11 +1,11 @@
 import torch
+from lloca.utils.lorentz import lorentz_squarednorm
+from lloca.utils.polar_decomposition import restframe_boost
+from lloca.utils.utils import get_batch_from_ptr
 from torch_geometric.utils import scatter
 
 from experiments.hep import get_eta, get_phi, get_pt
 from experiments.tagging.dataset import EPS
-from lloca.utils.utils import get_batch_from_ptr
-from lloca.utils.lorentz import lorentz_squarednorm
-from lloca.utils.polar_decomposition import restframe_boost
 
 # weaver defaults for tagging features standardization (mean, std)
 TAGGING_FEATURES_PREPROCESSING = [
@@ -90,9 +90,7 @@ def embed_tagging_data(fourmomenta, scalars, ptr, cfg_data):
     if cfg_data.mass_reg is not None:
         mass_reg = cfg_data.mass_reg
         mask = lorentz_squarednorm(fourmomenta) < mass_reg**2
-        fourmomenta[mask, 0] = (
-            (fourmomenta[mask, 1:] ** 2).sum(dim=-1).add(mass_reg**2).sqrt()
-        )
+        fourmomenta[mask, 0] = (fourmomenta[mask, 1:] ** 2).sum(dim=-1).add(mass_reg**2).sqrt()
 
     batch = get_batch_from_ptr(ptr)
 
@@ -102,21 +100,14 @@ def embed_tagging_data(fourmomenta, scalars, ptr, cfg_data):
         jet_boost = restframe_boost(jet)
         fourmomenta = torch.einsum("ijk,ik->ij", jet_boost, fourmomenta)
 
-    if cfg_data.add_tagging_features_framesnet:
-        jet = scatter(fourmomenta, batch, dim=0, reduce="sum").index_select(0, batch)
-        global_tagging_features = get_tagging_features(
-            fourmomenta,
-            jet,
-            only_ztransform=cfg_data.only_ztransform_tagging_features,
-        )
-        global_tagging_features[is_spurion] = 0
-    else:
-        global_tagging_features = torch.zeros(
-            fourmomenta.shape[0],
-            0,
-            dtype=fourmomenta.dtype,
-            device=fourmomenta.device,
-        )
+    jet = scatter(fourmomenta, batch, dim=0, reduce="sum").index_select(0, batch)
+    global_tagging_features = get_tagging_features(
+        fourmomenta,
+        jet,
+        tagging_features=cfg_data.tagging_features_framesnet,
+    )
+    global_tagging_features[is_spurion] = 0
+
     global_tagging_features = global_tagging_features.to(scalars.dtype)
 
     embedding = {
@@ -149,21 +140,15 @@ def dense_to_sparse_jet(fourmomenta_dense, scalars_dense):
         Start indices of each jet, this way we don't lose information when concatenating everything
         Starts with 0 and ends with the first non-accessible index (=total number of particles)
     """
-    fourmomenta_dense = torch.transpose(
-        fourmomenta_dense, 1, 2
-    )  # (batchsize, num_particles, 4)
-    scalars_dense = torch.transpose(
-        scalars_dense, 1, 2
-    )  # (batchsize, num_particles, num_features)
+    fourmomenta_dense = torch.transpose(fourmomenta_dense, 1, 2)  # (batchsize, num_particles, 4)
+    scalars_dense = torch.transpose(scalars_dense, 1, 2)  # (batchsize, num_particles, num_features)
 
     mask = (fourmomenta_dense.abs() > EPS).any(dim=-1)
     num_particles = mask.sum(dim=-1)
     fourmomenta_sparse = fourmomenta_dense[mask]
     scalars_sparse = scalars_dense[mask]
 
-    ptr = torch.zeros(
-        len(num_particles) + 1, device=fourmomenta_dense.device, dtype=torch.long
-    )
+    ptr = torch.zeros(len(num_particles) + 1, device=fourmomenta_dense.device, dtype=torch.long)
     ptr[1:] = torch.cumsum(num_particles, dim=0)
     return fourmomenta_sparse, scalars_sparse, ptr
 
@@ -235,7 +220,7 @@ def get_spurion(
     return spurion
 
 
-def get_tagging_features(fourmomenta, jet, only_ztransform=False, eps=1e-10):
+def get_tagging_features(fourmomenta, jet, tagging_features="all", eps=1e-10):
     """
     Compute features typically used in jet tagging
 
@@ -245,9 +230,9 @@ def get_tagging_features(fourmomenta, jet, only_ztransform=False, eps=1e-10):
         Fourmomenta in the format (E, px, py, pz)
     jet: torch.tensor of shape (n_particles, 4)
         Jet momenta in the shape (E, px, py, pz)
-    only_ztransform: bool
-        Whether to use only features that are invariant under ztransforms,
-        i.e. rotations around the beam axis and boosts along the beam axis
+    tagging_features: str
+        Type of tagging features to include. Options are None, 'all', 'zinvariant', 'so3invariant'.
+        Note that all features are SO(2)-invariant.
     eps: float
 
     Returns
@@ -279,13 +264,29 @@ def get_tagging_features(fourmomenta, jet, only_ztransform=False, eps=1e-10):
     for i, feature in enumerate(features):
         mean, factor = TAGGING_FEATURES_PREPROCESSING[i]
         features[i] = (feature - mean) * factor
-    if only_ztransform:
+    if tagging_features == "zinvariant":
         # exclude energy, because it is not invariant under z-boosts
-        ztransform_idx = [0, 2, 4, 5, 6]
-        features = [features[i] for i in ztransform_idx]
+        idx = [0, 2, 4, 5, 6]
+    elif tagging_features == "so3invariant":
+        # exclude everything except energy, because it is not invariant under SO(3) rotations
+        idx = [1, 3]
+    elif tagging_features is None:
+        return torch.zeros(
+            features[0].shape[0], 0, device=fourmomenta.device, dtype=fourmomenta.dtype
+        )
+    else:
+        idx = list(range(len(features)))
+    features = [features[i] for i in idx]
     features = torch.cat(features, dim=-1)
     return features
 
 
-def get_num_tagging_features(only_ztransform=False):
-    return 5 if only_ztransform else 7
+def get_num_tagging_features(tagging_features="all"):
+    if tagging_features == "all":
+        return 7
+    elif tagging_features == "zinvariant":
+        return 5
+    elif tagging_features == "so3invariant":
+        return 2
+    elif tagging_features is None:
+        return 0
