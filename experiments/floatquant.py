@@ -1,6 +1,7 @@
 import torch
 from torch import Tensor
 from parq.quant import Quantizer
+from parq.quant.uniform import get_q_max
 
 
 def assert_tensor(tensor):
@@ -106,28 +107,32 @@ class FloatQuantizer(Quantizer):
             q, mean = super().remove_mean(p.detach(), dim=dim)
         else:
             q = p.detach().clone()
-            mean = torch.zeros(1, dtype=p.dtype, device=p.device)
+            mean = torch.zeros(1, dtype=q.dtype, device=q.device)
 
-        absmax = q.abs().max()
-        format_max = self.get_max_value()
-        scale = absmax / format_max
-        q.div_(scale).clamp_(min=-format_max, max=format_max)
+        scale = self._compute_scale(q, dim)
+        q_scaled = q / scale
+        q_quant = self._quantize_tensor(q_scaled)
+        q_quant = q_quant * scale
 
-        q_quant = self._quantize_tensor(q)
-        q_quant.mul_(scale)
-
-        Q = self._codebook(q_quant.dtype, q_quant.device)
-        if dim is not None:
-            Q = Q.unsqueeze(0).mul_(scale)
-        else:
-            Q.mul_(scale)
+        Q = self._codebook(q_quant.dtype, q_quant.device).clone()
+        Q = Q * scale
 
         if self.center:
             q_quant += mean
             Q += mean
 
-        Q = self._codebook(q_quant.dtype, q_quant.device)
         return q_quant, Q
+
+    def _compute_scale(self, q: Tensor, dim: int | None) -> Tensor:
+        format_max = self.get_max_value()
+        if dim is None:
+            absmax = q.abs().max()
+        else:
+            absmax = q.abs().amax(dim=dim, keepdim=True)
+        scale = absmax / format_max
+        ones = torch.ones_like(scale)
+        scale = torch.where(scale > 0, scale, ones)
+        return scale
 
     def _quantize_tensor(self, q: Tensor) -> Tensor:
         dtype = q.dtype
@@ -250,10 +255,11 @@ class TorchFloatQuantizer(Quantizer):
         else:
             raise ValueError("Unsupported float8 format")
         self.bits = e + m + 1
+        self.format_max = float(torch.finfo(self.dtype).max)
         self._codebook_cache = {}
 
     def get_quant_size(self, b: int) -> int:
-        assert b == 8, "Only 8-bit float quantization is supported"
+        assert b == 8, "Only 8-bit float quantization is supported by torch"
         if self.dtype == torch.float8_e4m3fn:
             return 253
         elif self.dtype == torch.float8_e5m2:
@@ -269,26 +275,42 @@ class TorchFloatQuantizer(Quantizer):
             q, mean = super().remove_mean(p.detach(), dim=dim)
         else:
             q = p.detach().clone()
+            mean = torch.zeros(1, dtype=q.dtype, device=q.device)
 
-        q_quant = q.to(self.dtype).to(torch.float32)
+        scale = self._compute_scale(q, dim)
+        q_scaled = q / scale
+        q_quant = q_scaled.to(self.dtype).to(torch.float32)
+        q_quant = q_quant * scale
 
-        Q = self._codebook(b, q_quant.dtype, q_quant.device)
+        Q = self._codebook(q_quant.dtype, q_quant.device).clone()
+        Q = Q * scale
 
         if self.center:
             q_quant += mean
+            Q += mean
 
         return q_quant, Q
 
-    def _codebook(self, b: int, dtype: torch.dtype, device: torch.device) -> Tensor:
-        key = (b, dtype, device)
+    def _compute_scale(self, q: Tensor, dim: int | None) -> Tensor:
+        if dim is None:
+            absmax = q.abs().max()
+        else:
+            absmax = q.abs().amax(dim=dim, keepdim=True)
+        scale = absmax / self.format_max
+        ones = torch.ones_like(scale)
+        scale = torch.where(scale > 0, scale, ones)
+        return scale
+
+    def _codebook(self, dtype: torch.dtype, device: torch.device) -> Tensor:
+        key = (dtype, device)
         if key in self._codebook_cache:
             return self._codebook_cache[key]
         values = (
-            torch.arange(2**b, dtype=torch.uint8, device=device)
+            torch.arange(2**self.bits, dtype=torch.uint8, device=device)
             .view(self.dtype)
             .to(dtype)
         )
-        finite = values  # [torch.isfinite(values)]
+        finite = values[torch.isfinite(values)]
         finite = torch.unique(finite)
         codebook = torch.sort(finite).values
         self._codebook_cache[key] = codebook
