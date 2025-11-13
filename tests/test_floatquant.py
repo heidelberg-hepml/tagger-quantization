@@ -9,8 +9,8 @@ def _assert_quantizers_match(e: int, m: int, samples: torch.Tensor) -> None:
     tq = TorchFloatQuantizer(e, m)
     fq_q, fq_Q = fq.quantize(samples, bits)
     tq_q, tq_Q = tq.quantize(samples, bits)
-    assert torch.allclose(fq_q, tq_q)
-    assert torch.allclose(fq_Q, tq_Q, equal_nan=True)
+    torch.testing.assert_close(fq_q, tq_q)
+    torch.testing.assert_close(fq_Q, tq_Q, equal_nan=True)
 
 
 def test_float_quantizers_match_e4m3():
