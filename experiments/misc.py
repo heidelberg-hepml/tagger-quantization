@@ -67,7 +67,7 @@ def get_attention_mask(
             batch=batch, dtype=dtype, materialize=materialize
         )
         return {"attn_mask" if materialize else "attn_bias": mask}
-    elif attention_backend == "flex":
+    elif attention_backend == "flex_attention":
         mask = get_flex_attention_mask(batch=batch, device=device)
         return {"block_mask": mask}
     else:
