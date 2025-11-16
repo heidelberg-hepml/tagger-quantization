@@ -311,8 +311,6 @@ class TransformerWrapper(AggregatedTaggerWrapper):
         with torch.autocast("cuda", enabled=self.use_amp):
             outputs = self.net(inputs=features_local, frames=frames, **mask_kwarg)
 
-        assert torch.isfinite(outputs).all(), "NaN or Inf in outputs"
-
         # aggregation
         outputs = outputs[0, ...]
         if self.mean_aggregation:
@@ -473,15 +471,9 @@ class LGATrWrapper(nn.Module):
         mv = embed_vector(fourmomenta).unsqueeze(-2)
         s = scalars if scalars.shape[-1] > 0 else None
 
-        assert torch.isfinite(mv).all(), "NaN or Inf in mv"
-        if s is not None:
-            assert torch.isfinite(s).all(), "NaN or Inf in s"
-
         with torch.autocast("cuda", enabled=self.use_amp):
             mv_outputs, _ = self.net(mv, s, **mask_kwarg)
         out = extract_scalar(mv_outputs)[0, :, :, 0]
-
-        assert torch.isfinite(mv_outputs).all(), "NaN or Inf in out"
 
         if self.aggregator is not None:
             B = ptr.numel() - 1

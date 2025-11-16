@@ -69,5 +69,5 @@ def get_attention_mask(
     else:
         raise ValueError(
             f"Unsupported attention backend: {attention_backend}. "
-            'Supported backends are "xformers" and "flex".'
+            'Supported backends are "xformers" and "flex_attention".'
         )
