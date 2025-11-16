@@ -1,7 +1,6 @@
 import torch
-from torch import Tensor
 from parq.quant import Quantizer
-from parq.quant.uniform import get_q_max
+from torch import Tensor
 
 
 def assert_tensor(tensor):

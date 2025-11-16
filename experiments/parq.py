@@ -7,12 +7,14 @@ from parq.optim import (
 )
 from parq.quant import (
     LSBQuantizer,
-    UnifQuantizer,
-    TernaryUnifQuantizer,
     MaxUnifQuantizer,
+    TernaryUnifQuantizer,
+    UnifQuantizer,
 )
 from parq.quant.uniform import AsymUnifQuantizer
+
 from experiments.floatquant import FloatQuantizer, TorchFloatQuantizer
+from experiments.logger import LOGGER
 
 
 def get_quantizer(name, bits):

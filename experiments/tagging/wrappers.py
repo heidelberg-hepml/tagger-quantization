@@ -1,19 +1,7 @@
 import torch
 from lgatr import embed_vector, extract_scalar
-
-from experiments.tagging.embedding import get_tagging_features
-from experiments.misc import get_attention_mask
 from lloca.framesnet.frames import Frames
-from lloca.utils.utils import (
-    get_ptr_from_batch,
-    get_batch_from_ptr,
-    get_edge_index_from_ptr,
-    get_edge_attr,
-)
-from lloca.backbone.attention_backends.xformers_attention import (
-    get_xformers_attention_mask,
-)
-from lloca.utils.lorentz import lorentz_eye
+from lloca.framesnet.nonequi_frames import IdentityFrames
 from lloca.reps.tensorreps import TensorReps
 from lloca.reps.tensorreps_transform import TensorRepsTransform
 from lloca.utils.lorentz import lorentz_eye
@@ -27,6 +15,7 @@ from torch import nn
 from torch_geometric.nn.aggr import MeanAggregation
 from torch_geometric.utils import scatter, to_dense_batch
 
+from experiments.misc import get_attention_mask
 from experiments.tagging.embedding import get_tagging_features
 
 

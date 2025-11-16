@@ -16,13 +16,12 @@ from torch.cuda.amp import GradScaler
 from torch_ema import ExponentialMovingAverage
 
 import experiments.logger
+from experiments.inputquant import input_quantize
 from experiments.logger import FORMATTER, LOGGER, MEMORY_HANDLER, RankFilter
 from experiments.misc import flatten_dict, get_device
 from experiments.mlflow import log_mlflow
 from experiments.parq import init_parq_optimizer, init_parq_param_groups
 from experiments.ranger import Ranger
-from experiments.parq import init_parq_param_groups, init_parq_optimizer
-from experiments.inputquant import input_quantize
 
 # set to 'True' to debug autograd issues (slows down code)
 torch.autograd.set_detect_anomaly(False)
