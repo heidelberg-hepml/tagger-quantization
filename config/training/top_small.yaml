@@ -1,0 +1,5 @@
+# agnostic training config for small taggers
+iterations: 200000
+
+defaults:
+ - tag_default

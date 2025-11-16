@@ -5,44 +5,69 @@ from parq.optim import (
     ProxSoftQuant,
     build_quant_optimizer,
 )
-from parq.quant import LSBQuantizer, TernaryUnifQuantizer, UnifQuantizer
+from parq.quant import (
+    LSBQuantizer,
+    MaxUnifQuantizer,
+    TernaryUnifQuantizer,
+    UnifQuantizer,
+)
+from parq.quant.uniform import AsymUnifQuantizer
 
+from experiments.floatquant import FloatQuantizer, TorchFloatQuantizer
 from experiments.logger import LOGGER
 
 
-def init_parq_optimizer(base_optimizer, cfg):
-    if cfg.parq.uniform:
-        if cfg.parq.bits == 0:
-            quantizer = TernaryUnifQuantizer()
+def get_quantizer(name, bits):
+    name = name.lower()
+    if name == "lsbq":
+        return LSBQuantizer()
+    elif bits == 0:
+        return TernaryUnifQuantizer()
+    elif name == "uniform":
+        return UnifQuantizer()
+    elif name == "asymuniform":
+        return AsymUnifQuantizer()
+    elif name == "maxuniform":
+        return MaxUnifQuantizer()
+    elif "float" in name:  # e.g. floate5m2 or Float-E4M3
+        em = name.split("e")[-1]
+        e, m = em.split("m")
+        assert int(e) + int(m) + 1 == bits, "Bits do not match exponent and mantissa"
+        if "torch" in name:
+            return TorchFloatQuantizer(int(e), int(m))
         else:
-            quantizer = UnifQuantizer()
+            return FloatQuantizer(int(e), int(m))
     else:
-        quantizer = LSBQuantizer()
+        raise ValueError(f"Unknown quantizer {name}")
 
-    start_step = cfg.parq.start_step
-    end_step = cfg.training.iterations - cfg.parq.final_hard_steps
 
-    if cfg.parq.prox_map == "parq":
-        prox_map = ProxPARQ(start_step, end_step, steepness=cfg.parq.steepness)
-    elif cfg.parq.prox_map == "soft":
+def init_parq_optimizer(base_optimizer, cfg):
+    quantizer = get_quantizer(cfg.weightquant.quantizer, cfg.weightquant.bits)
+
+    start_step = cfg.weightquant.start_step
+    end_step = cfg.training.iterations - cfg.weightquant.final_hard_steps
+
+    if cfg.weightquant.prox_map == "parq":
+        prox_map = ProxPARQ(start_step, end_step, steepness=cfg.weightquant.steepness)
+    elif cfg.weightquant.prox_map == "soft":
         prox_map = ProxSoftQuant(start_step, end_step)
-    elif cfg.parq.prox_map == "hard":
+    elif cfg.weightquant.prox_map == "hard":
         prox_map = ProxHardQuant()
-    elif cfg.parq.prox_map == "binaryrelax":
+    elif cfg.weightquant.prox_map == "binaryrelax":
         prox_map = ProxBinaryRelax(start_step, end_step)
     else:
-        raise ValueError(f"Prox map {cfg.parq.prox_map} not implemented")
+        raise ValueError(f"Prox map {cfg.weightquant.prox_map} not implemented")
 
     optimizer = build_quant_optimizer(
         base_optimizer=base_optimizer,
         quantizer=quantizer,
         prox_map=prox_map,
-        warmup_steps=cfg.parq.warmup_steps,
-        quant_period=cfg.parq.quant_period,
-        quant_per_channel=cfg.parq.quant_per_channel,
-        quant_shrink=cfg.parq.quant_shrink,
-        anneal_wd_frac=cfg.parq.anneal_wd_frac,
-        nm_gamma=cfg.parq.nm_gamma,
+        warmup_steps=cfg.weightquant.warmup_steps,
+        quant_period=cfg.weightquant.quant_period,
+        quant_per_channel=cfg.weightquant.quant_per_channel,
+        quant_shrink=cfg.weightquant.quant_shrink,
+        anneal_wd_frac=cfg.weightquant.anneal_wd_frac,
+        nm_gamma=cfg.weightquant.nm_gamma,
     )
     return optimizer
 
@@ -66,7 +91,7 @@ def init_parq_param_groups(model, cfg, modelname, param_groups=None):
         if p.requires_grad and "quant_bits" in group
     )
     LOGGER.info(
-        f"Fraction of quantized parameters: {num_params_quantized}/{num_params_total} ({num_params_quantized/num_params_total*100:.2f}%)"
+        f"Fraction of quantized parameters: {num_params_quantized}/{num_params_total} ({num_params_quantized / num_params_total * 100:.2f}%)"
     )
 
     return param_groups
@@ -129,7 +154,7 @@ def param_groups_transformer_helper(
 
     def include_params(in_list, out_quant_wd, out_quant_nowd, out_unquant):
         out_quant_wd += [p for p in in_list if not is_bias(p)]
-        if cfg.parq.bias:
+        if cfg.weightquant.bias:
             out_quant_nowd += [p for p in in_list if is_bias(p)]
         else:
             out_unquant += [p for p in in_list if is_bias(p)]
@@ -138,17 +163,17 @@ def param_groups_transformer_helper(
     params_q_nowd = []
     params_q_wd = []
     params_noq_wd = []
-    if cfg.parq.inout:
+    if cfg.weightquant.inout:
         include_params(params_inout, params_q_wd, params_q_nowd, params_noq)
     else:
         params_noq_wd += [p for p in params_inout if not is_bias(p)]
         params_noq += [p for p in params_inout if is_bias(p)]
-    if cfg.parq.attn:
+    if cfg.weightquant.attn:
         include_params(params_attn, params_q_wd, params_q_nowd, params_noq)
     else:
         params_noq_wd += [p for p in params_attn if not is_bias(p)]
         params_noq += [p for p in params_attn if is_bias(p)]
-    if cfg.parq.mlp:
+    if cfg.weightquant.mlp:
         include_params(params_mlp, params_q_wd, params_q_nowd, params_noq)
     else:
         params_noq_wd += [p for p in params_mlp if not is_bias(p)]
@@ -165,12 +190,12 @@ def param_groups_transformer_helper(
             "params": params_q_wd,
             "lr": cfg.training.lr,
             "weight_decay": cfg.training.weight_decay,
-            "quant_bits": cfg.parq.bits,
+            "quant_bits": cfg.weightquant.bits,
         },
         {
             "params": params_q_nowd,
             "lr": cfg.training.lr,
-            "quant_bits": cfg.parq.bits,
+            "quant_bits": cfg.weightquant.bits,
         },
         {
             "params": params_noq,

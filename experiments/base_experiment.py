@@ -16,6 +16,7 @@ from torch.cuda.amp import GradScaler
 from torch_ema import ExponentialMovingAverage
 
 import experiments.logger
+from experiments.inputquant import input_quantize
 from experiments.logger import FORMATTER, LOGGER, MEMORY_HANDLER, RankFilter
 from experiments.misc import flatten_dict, get_device
 from experiments.mlflow import log_mlflow
@@ -102,7 +103,7 @@ class BaseExperiment:
         LOGGER.info(f"CPU_RAM_max_used = {max_cpuram_used:.3} GB")
         dt = time.time() - t0
         LOGGER.info(
-            f"Finished experiment {self.cfg.exp_name}/{self.cfg.run_name} after {dt/60:.2f}min = {dt/60**2:.2f}h"
+            f"Finished experiment {self.cfg.exp_name}/{self.cfg.run_name} after {dt / 60:.2f}min = {dt / 60**2:.2f}h"
         )
 
     def init_model(self):
@@ -121,6 +122,10 @@ class BaseExperiment:
         LOGGER.info(
             f"Frames approach: {self.model.framesnet} ({num_parameters_framesnet} learnable parameters)"
         )
+
+        if self.cfg.inputquant.use:
+            modelname = self.cfg.model.net._target_.rsplit(".", 1)[-1]
+            input_quantize(self.model, modelname, self.cfg.inputquant)
 
         if self.cfg.ema:
             LOGGER.info("Using EMA for validation and eval")
@@ -325,7 +330,7 @@ class BaseExperiment:
 
     def _init_optimizer(self, param_groups=None):
         modelname = self.cfg.model.net._target_.rsplit(".", 1)[-1]
-        if self.cfg.parq.use:
+        if self.cfg.weightquant.use:
             param_groups = init_parq_param_groups(self.model, self.cfg, modelname, param_groups)
 
         if param_groups is None:
@@ -394,7 +399,7 @@ class BaseExperiment:
         LOGGER.debug(
             f"Using optimizer {self.cfg.training.optimizer} with lr={self.cfg.training.lr}"
         )
-        if self.cfg.parq.use:
+        if self.cfg.weightquant.use:
             self.optimizer = init_parq_optimizer(self.optimizer, self.cfg)
 
         # load existing optimizer if specified
@@ -600,9 +605,9 @@ class BaseExperiment:
                 dt_corrected = time.time() - self.training_start_time_corrected
                 dt_estimate = dt_corrected * self.cfg.training.iterations / (step + 1)
                 LOGGER.info(
-                    f"Finished iteration {step+1} after {dt:.2f}s, "
-                    f"training time estimate: {dt_estimate/60:.2f}min "
-                    f"= {dt_estimate/60**2:.2f}h"
+                    f"Finished iteration {step + 1} after {dt:.2f}s, "
+                    f"training time estimate: {dt_estimate / 60:.2f}min "
+                    f"= {dt_estimate / 60**2:.2f}h"
                 )
 
             if self.cfg.training.scheduler in [
@@ -621,7 +626,7 @@ class BaseExperiment:
         dt = time.time() - self.training_start_time
         LOGGER.info(
             f"Finished training for {step} iterations = {step / len(self.train_loader):.1f} epochs "
-            f"after {dt/60:.2f}min = {dt/60**2:.2f}h"
+            f"after {dt / 60:.2f}min = {dt / 60**2:.2f}h"
         )
         LOGGER.info(f"Spend {train_time:.2f}s training and {val_time:.2f}s validating")
         if self.cfg.use_mlflow:

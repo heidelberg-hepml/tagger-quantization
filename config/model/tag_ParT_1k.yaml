@@ -1,0 +1,32 @@
+_target_: experiments.tagging.wrappers.ParTWrapper
+in_channels: null
+out_channels: null
+use_amp: false
+add_fourmomenta_backbone: false
+only_ztransform_tagging_features: null
+
+net:
+ _target_: lloca.backbone.particletransformer.ParticleTransformer
+ _partial_: true
+ input_dim: null
+ num_classes: null
+
+ attn_reps: 4x0n+1x1n
+ num_layers: 1
+ num_heads: 1
+ embed_dims: [8,16,8]
+ pair_embed_dims: [4,4,4]
+
+ use_amp: ${model.use_amp}
+ trim: false
+
+ use_pre_activation_pair: false
+ pair_input_dim: 4
+ cls_block_params:
+  dropout: 0
+  attn_dropout: 0
+  activation_dropout: 0
+ version: 1
+
+defaults:
+ - framesnet: identity

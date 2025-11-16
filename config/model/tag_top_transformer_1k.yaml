@@ -2,22 +2,23 @@ _target_: experiments.tagging.wrappers.TransformerWrapper
 in_channels: null
 out_channels: null
 use_amp: false
-attention_backend: xformers
 add_fourmomenta_backbone: false
+only_ztransform_tagging_features: null
 mean_aggregation: true
+attention_backend: flex_attention
 
 net:
  _target_: lloca.backbone.transformer.Transformer
  _partial_: true
 
  in_channels: null
- attn_reps: "8x0n+2x1n"
- out_channels: null
+ attn_reps: "4x0n+1x1n" # reps can be varied, but number of channels should stay fixed
+ out_channels: nulln
 
- num_blocks: 2
+ num_blocks: 1
  num_heads: 2
- mlp_factor: 4
- checkpoint_blocks: false
+ mlp_factor: 2
+ attention_factor: 1
 
 defaults:
  - framesnet: identity
