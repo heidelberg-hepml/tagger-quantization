@@ -1,12 +1,5 @@
-# transformer settings optimized by us
+# agnostic training config for small taggers
 iterations: 200000
-batchsize: 512
-
-optimizer: Adam
-weight_decay: 0
-
-lr: 1e-3
-scheduler: CosineAnnealingLR
 
 defaults:
  - tag_default
