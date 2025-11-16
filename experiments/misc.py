@@ -40,9 +40,7 @@ def get_flex_attention_mask(batch: torch.Tensor, device: torch.device) -> BlockM
     def jagged_masking(b, h, q_idx, kv_idx):
         return batch[q_idx] == batch[kv_idx]
 
-    mask = create_block_mask(
-        jagged_masking, None, None, N, N, device=device, _compile=True
-    )
+    mask = create_block_mask(jagged_masking, None, None, N, N, device=device, _compile=True)
     return mask
 
 
@@ -55,7 +53,7 @@ def get_attention_mask(
     """Returns the attention mask according to the backend.
     Args:
         batch: Batch vector, maps each token to its sequence in the batch.
-        attention_backend: Attention backend to use ("xformers" or "flex").
+        attention_backend: Attention backend to use ("xformers" or "flex_attention").
         device: Device to create the mask on.
         dtype: Data type of the attention mask (for xformers backend).
     Returns:
@@ -63,9 +61,7 @@ def get_attention_mask(
     """
     if attention_backend == "xformers":
         materialize = device == torch.device("cpu")
-        mask = get_xformers_attention_mask(
-            batch=batch, dtype=dtype, materialize=materialize
-        )
+        mask = get_xformers_attention_mask(batch=batch, dtype=dtype, materialize=materialize)
         return {"attn_mask" if materialize else "attn_bias": mask}
     elif attention_backend == "flex_attention":
         mask = get_flex_attention_mask(batch=batch, device=device)

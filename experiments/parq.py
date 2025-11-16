@@ -99,9 +99,7 @@ def init_parq_param_groups(model, cfg, modelname, param_groups=None):
 
 def init_param_groups_transformer(model, cfg):
     # collect parameters in groups
-    params_inout = list(model.net.linear_in.parameters()) + list(
-        model.net.linear_out.parameters()
-    )
+    params_inout = list(model.net.linear_in.parameters()) + list(model.net.linear_out.parameters())
     params_attn = []
     params_mlp = []
     for block in model.net.blocks:

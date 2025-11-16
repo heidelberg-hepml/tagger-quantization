@@ -3,40 +3,6 @@ from parq.quant import Quantizer
 from torch import Tensor
 
 
-def assert_tensor(tensor):
-    if torch.isnan(tensor).any():
-        raise ValueError("Input tensor contains NaN values.")
-    if torch.isinf(tensor).any():
-        raise ValueError("Input tensor contains Inf values.")
-    return True
-
-
-def assert_finite(func):
-    def wrapper(*args, **kwargs):
-        result = func(*args, **kwargs)
-        if isinstance(result, Tensor):
-            try:
-                assert_tensor(result)
-            except ValueError as e:
-                raise ValueError(
-                    f"Output of {func.__name__} is not finite.\n"
-                    f"The input arguments were: args={args}, kwargs={kwargs}"
-                ) from e
-        elif isinstance(result, tuple) or isinstance(result, list):
-            for idx, item in enumerate(result):
-                if isinstance(item, Tensor):
-                    try:
-                        assert_tensor(item)
-                    except ValueError as e:
-                        raise ValueError(
-                            f"Output item {idx} of {func.__name__} is not finite.\n"
-                            f"The input arguments were: args={args}, kwargs={kwargs}"
-                        ) from e
-        return result
-
-    return wrapper
-
-
 class FloatQuantizer(Quantizer):
     """Float quantizer"""
 
@@ -92,10 +58,7 @@ class FloatQuantizer(Quantizer):
         max_value = (1 + max_mant / self.mantissa_scale) * (2**self.emax)
         return max_value
 
-    @assert_finite
-    def quantize(
-        self, p: Tensor, b: int, dim: int | None = None
-    ) -> tuple[Tensor, Tensor]:
+    def quantize(self, p: Tensor, b: int, dim: int | None = None) -> tuple[Tensor, Tensor]:
         """Instantiation of Quantizer.quantize() method"""
         assert b >= 4, "Bit width must be at least 4 for float quantization"
         assert (
@@ -136,9 +99,7 @@ class FloatQuantizer(Quantizer):
     def _quantize_tensor(self, q: Tensor) -> Tensor:
         dtype = q.dtype
         device = q.device
-        mant_scale_tensor = torch.tensor(
-            float(self.mantissa_scale), dtype=dtype, device=device
-        )
+        mant_scale_tensor = torch.tensor(float(self.mantissa_scale), dtype=dtype, device=device)
         min_normal = torch.ldexp(
             torch.ones(1, dtype=dtype, device=device),
             torch.tensor(self.emin, dtype=torch.int32, device=device),
@@ -147,9 +108,7 @@ class FloatQuantizer(Quantizer):
             torch.ones(1, dtype=dtype, device=device),
             torch.tensor(self.emax, dtype=torch.int32, device=device),
         )
-        max_mant = torch.tensor(
-            float(self.max_mantissa_for_max_exp), dtype=dtype, device=device
-        )
+        max_mant = torch.tensor(float(self.max_mantissa_for_max_exp), dtype=dtype, device=device)
         max_value = (1 + max_mant / mant_scale_tensor) * max_scale
         subnorm_step = torch.ldexp(
             torch.ones(1, dtype=dtype, device=device),
@@ -204,9 +163,7 @@ class FloatQuantizer(Quantizer):
         if key in self._codebook_cache:
             return self._codebook_cache[key]
 
-        mant_scale = torch.tensor(
-            float(self.mantissa_scale), dtype=dtype, device=device
-        )
+        mant_scale = torch.tensor(float(self.mantissa_scale), dtype=dtype, device=device)
         step = torch.ldexp(
             torch.ones(1, dtype=dtype, device=device),
             torch.tensor(self.emin - self.m, dtype=torch.int32, device=device),
@@ -266,9 +223,7 @@ class TorchFloatQuantizer(Quantizer):
         else:
             raise ValueError("Unsupported float8 format")
 
-    def quantize(
-        self, p: Tensor, b: int, dim: int | None = None
-    ) -> tuple[Tensor, Tensor]:
+    def quantize(self, p: Tensor, b: int, dim: int | None = None) -> tuple[Tensor, Tensor]:
         assert b == self.bits, "Bit size does not match exponent and mantissa bits"
         if self.center:
             q, mean = super().remove_mean(p.detach(), dim=dim)

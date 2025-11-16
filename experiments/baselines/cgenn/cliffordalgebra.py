@@ -95,7 +95,9 @@ class CliffordAlgebra(nn.Module):
         return mv[..., :1]
 
     def embed(self, tensor: torch.Tensor, tensor_index: torch.Tensor) -> torch.Tensor:
-        mv = torch.zeros(*tensor.shape[:-1], 2**self.dim, device=tensor.device, dtype=tensor.dtype)
+        mv = torch.zeros(
+            *tensor.shape[:-1], 2**self.dim, device=tensor.device, dtype=tensor.dtype
+        )
         mv[..., tensor_index] = tensor
         return mv
 

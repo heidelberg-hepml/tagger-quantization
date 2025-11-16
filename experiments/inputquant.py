@@ -78,12 +78,8 @@ def input_quantize_module(module, cfg):
             new_layer = QuantEquiLinear(
                 in_mv_channels=child.weight.shape[1],
                 out_mv_channels=child.weight.shape[0],
-                in_s_channels=(
-                    child.s2mvs.weight.shape[1] if child.s2mvs is not None else 0
-                ),
-                out_s_channels=(
-                    child.mvs2s.weight.shape[0] if child.mvs2s is not None else 0
-                ),
+                in_s_channels=(child.s2mvs.weight.shape[1] if child.s2mvs is not None else 0),
+                out_s_channels=(child.mvs2s.weight.shape[0] if child.mvs2s is not None else 0),
                 bias=(child.bias is not None),
                 quantizer=cfg.quantizer,
                 bits=cfg.bits,
@@ -167,9 +163,7 @@ class QuantEquiLinear(EquiLinear, QuantLayer):
             quantize_output=quantize_output,
         )
 
-    def forward(
-        self, multivectors: Tensor, scalars: Tensor | None
-    ) -> tuple[Tensor, Tensor | None]:
+    def forward(self, multivectors: Tensor, scalars: Tensor | None) -> tuple[Tensor, Tensor | None]:
         multivectors = QuantLayer.ste_quantize(self, multivectors)
         if scalars is not None:
             scalars = QuantLayer.ste_quantize(self, scalars)

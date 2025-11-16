@@ -56,9 +56,7 @@ class TaggerWrapper(nn.Module):
         nospurion_idxs = (~is_spurion).nonzero(as_tuple=False).squeeze(-1)
 
         # remove spurions from the data again and recompute attributes
-        fourmomenta_nospurions = fourmomenta_withspurions.index_select(
-            0, nospurion_idxs
-        )
+        fourmomenta_nospurions = fourmomenta_withspurions.index_select(0, nospurion_idxs)
         scalars_nospurions = scalars_withspurions.index_select(0, nospurion_idxs)
 
         batch_nospurions = batch_withspurions.index_select(0, nospurion_idxs)
@@ -114,9 +112,7 @@ class TaggerWrapper(nn.Module):
             )
 
         # change dtype (see embedding.py fourmomenta_float64 option)
-        features_local_nospurions = features_local_nospurions.to(
-            scalars_nospurions.dtype
-        )
+        features_local_nospurions = features_local_nospurions.to(scalars_nospurions.dtype)
         frames_nospurions.to(scalars_nospurions.dtype)
 
         return (
@@ -170,13 +166,9 @@ class GraphNetWrapper(AggregatedTaggerWrapper):
             tracker,
         ) = super().forward(embedding)
 
-        edge_index = get_edge_index_from_ptr(
-            ptr, features_local.shape, remove_self_loops=True
-        )
+        edge_index = get_edge_index_from_ptr(ptr, features_local.shape, remove_self_loops=True)
         if self.include_edges:
-            edge_attr = self.get_edge_attr(fourmomenta_local, edge_index).to(
-                features_local.dtype
-            )
+            edge_attr = self.get_edge_attr(fourmomenta_local, edge_index).to(features_local.dtype)
         else:
             edge_attr = None
         # network
@@ -437,9 +429,7 @@ class LGATrWrapper(nn.Module):
                 dtype=scalars.dtype,
                 device=scalars.device,
             )
-            token_idx = torch.nn.functional.one_hot(
-                torch.arange(1, device=scalars.device)
-            )
+            token_idx = torch.nn.functional.one_hot(torch.arange(1, device=scalars.device))
             token_idx = token_idx.repeat(batchsize, 1)
             scalars[~is_global] = torch.cat(
                 (
@@ -510,9 +500,7 @@ class ParTWrapper(TaggerWrapper):
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
-        self.net = net(
-            input_dim=self.in_channels, num_classes=self.out_channels, use_amp=use_amp
-        )
+        self.net = net(input_dim=self.in_channels, num_classes=self.out_channels, use_amp=use_amp)
 
     def forward(self, embedding):
         (
@@ -568,14 +556,7 @@ class MIParTWrapper(ParTWrapper):
         assert isinstance(self.framesnet, IdentityFrames)
 
     def forward(self, embedding):
-        (
-            features_local,
-            fourmomenta_local,
-            frames,
-            _,
-            batch,
-            tracker,
-        ) = super(
+        (features_local, fourmomenta_local, frames, _, batch, tracker,) = super(
             ParTWrapper, self
         ).forward(embedding)
         fourmomenta_local = fourmomenta_local.to(features_local.dtype)
@@ -620,9 +601,7 @@ class LorentzNetWrapper(nn.Module):
         # rescale fourmomenta (but not the spurions)
         fourmomenta[~is_spurion] = fourmomenta[~is_spurion] / 20
 
-        edge_index = get_edge_index_from_ptr(
-            ptr, fourmomenta.shape, remove_self_loops=True
-        )
+        edge_index = get_edge_index_from_ptr(ptr, fourmomenta.shape, remove_self_loops=True)
         fourmomenta = fourmomenta.to(scalars.dtype)
         output = self.net(scalars, fourmomenta, edges=edge_index, batch=batch)
         return output, {}, None
@@ -657,9 +636,7 @@ class PELICANWrapper(nn.Module):
         # rescale fourmomenta (but not the spurions)
         fourmomenta[~is_spurion] = fourmomenta[~is_spurion] / 20
 
-        edge_index = get_edge_index_from_ptr(
-            ptr, fourmomenta.shape, remove_self_loops=False
-        )
+        edge_index = get_edge_index_from_ptr(ptr, fourmomenta.shape, remove_self_loops=False)
         fourmomenta = fourmomenta.to(scalars.dtype)
         edge_attr = self.get_edge_attr(fourmomenta, edge_index).to(scalars.dtype)
         output = self.net(
@@ -723,16 +700,12 @@ class CGENNWrapper(nn.Module):
         batch = embedding["batch"]
         ptr = embedding["ptr"]
         is_spurion = embedding["is_spurion"]
-        edge_index = get_edge_index_from_ptr(
-            ptr, fourmomenta.shape, remove_self_loops=True
-        )
+        edge_index = get_edge_index_from_ptr(ptr, fourmomenta.shape, remove_self_loops=True)
 
         # rescale fourmomenta (but not the spurions)
         fourmomenta[~is_spurion] = fourmomenta[~is_spurion] / 20
         fourmomenta = fourmomenta.to(scalars.dtype)
-        zeros = torch.zeros(
-            scalars.shape[0], 1, device=scalars.device, dtype=scalars.dtype
-        )
+        zeros = torch.zeros(scalars.shape[0], 1, device=scalars.device, dtype=scalars.dtype)
         scalars = torch.cat((scalars, zeros), dim=-1)
 
         # pad to dense tensors
