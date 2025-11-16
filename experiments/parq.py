@@ -91,7 +91,7 @@ def init_parq_param_groups(model, cfg, modelname, param_groups=None):
         if p.requires_grad and "quant_bits" in group
     )
     LOGGER.info(
-        f"Fraction of quantized parameters: {num_params_quantized}/{num_params_total} ({num_params_quantized/num_params_total*100:.2f}%)"
+        f"Fraction of quantized parameters: {num_params_quantized}/{num_params_total} ({num_params_quantized / num_params_total * 100:.2f}%)"
     )
 
     return param_groups

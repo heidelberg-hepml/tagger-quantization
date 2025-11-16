@@ -152,9 +152,9 @@ class QuantEquiLinear(EquiLinear, QuantLayer):
         **kwargs,
     ):
         EquiLinear.__init__(self, *args, **kwargs)
-        assert (
-            dim is None
-        ), "Quantization scale should be shared across channels to preserve equivariance"
+        assert dim is None, (
+            "Quantization scale should be shared across channels to preserve equivariance"
+        )
         QuantLayer.__init__(
             self,
             quantizer=quantizer,

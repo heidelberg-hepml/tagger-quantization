@@ -39,9 +39,9 @@ class FloatQuantizer(Quantizer):
         super().__init__(center=center)
 
     def get_quant_size(self, b: int) -> int:
-        assert (
-            self.e + self.m == b - 1
-        ), "Exponent and mantissa bits must sum to total bits - sign bit"
+        assert self.e + self.m == b - 1, (
+            "Exponent and mantissa bits must sum to total bits - sign bit"
+        )
         regular_exponents = self.max_exponent_code
         top_bonus = 0
         if self.use_finite_top:
@@ -61,9 +61,9 @@ class FloatQuantizer(Quantizer):
     def quantize(self, p: Tensor, b: int, dim: int | None = None) -> tuple[Tensor, Tensor]:
         """Instantiation of Quantizer.quantize() method"""
         assert b >= 4, "Bit width must be at least 4 for float quantization"
-        assert (
-            self.e + self.m == b - 1
-        ), "Exponent and mantissa bits must sum to total bits - sign bit"
+        assert self.e + self.m == b - 1, (
+            "Exponent and mantissa bits must sum to total bits - sign bit"
+        )
 
         if self.center:
             q, mean = super().remove_mean(p.detach(), dim=dim)
@@ -260,9 +260,7 @@ class TorchFloatQuantizer(Quantizer):
         if key in self._codebook_cache:
             return self._codebook_cache[key]
         values = (
-            torch.arange(2**self.bits, dtype=torch.uint8, device=device)
-            .view(self.dtype)
-            .to(dtype)
+            torch.arange(2**self.bits, dtype=torch.uint8, device=device).view(self.dtype).to(dtype)
         )
         finite = values[torch.isfinite(values)]
         finite = torch.unique(finite)

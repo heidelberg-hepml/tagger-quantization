@@ -556,9 +556,14 @@ class MIParTWrapper(ParTWrapper):
         assert isinstance(self.framesnet, IdentityFrames)
 
     def forward(self, embedding):
-        (features_local, fourmomenta_local, frames, _, batch, tracker,) = super(
-            ParTWrapper, self
-        ).forward(embedding)
+        (
+            features_local,
+            fourmomenta_local,
+            frames,
+            _,
+            batch,
+            tracker,
+        ) = super(ParTWrapper, self).forward(embedding)
         fourmomenta_local = fourmomenta_local.to(features_local.dtype)
         fourmomenta_local = fourmomenta_local[..., [1, 2, 3, 0]]  # need (px, py, pz, E)
 
