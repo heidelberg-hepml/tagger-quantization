@@ -25,7 +25,6 @@ def flatten_dict(d, parent_key="", sep="."):
     return dict(items)
 
 
-@torch.compile
 def get_flex_attention_mask(batch: torch.Tensor, device: torch.device) -> BlockMask:
     """Returns a mask for the attention mechanism.
     Args:
