@@ -1,8 +1,9 @@
+# 1.8k parameters mini LGATr
 _target_: experiments.tagging.wrappers.LGATrWrapper
 mean_aggregation: false
 out_channels: null
 use_amp: false
-attention_backend: flex_attention
+attention_backend: xformers
 
 net:
  _target_: lgatr.LGATr
@@ -12,8 +13,8 @@ net:
  in_s_channels: null
  out_mv_channels: null
  out_s_channels: null
- hidden_mv_channels: 2
- hidden_s_channels: 4
+ hidden_mv_channels: 3
+ hidden_s_channels: 8
 
  num_blocks: 1
  attention:
@@ -23,7 +24,7 @@ net:
   head_scale: true
  mlp:
   activation: gelu
-  increase_hidden_channels: 2
+  increase_hidden_channels: 1
 
 defaults:
  - framesnet: identity

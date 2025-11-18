@@ -1,11 +1,8 @@
 from collections.abc import Mapping
 
 import torch
-from lloca.backbone.attention_backends.xformers_attention import (
-    BlockDiagonalMask,
-    get_xformers_attention_mask,
-)
 from torch.nn.attention.flex_attention import BlockMask, create_block_mask
+from xformers.ops.fmha.attn_bias import BlockDiagonalMask
 
 
 def get_device() -> torch.device:
@@ -25,7 +22,34 @@ def flatten_dict(d, parent_key="", sep="."):
     return dict(items)
 
 
-@torch.compile
+def get_xformers_attention_mask(batch, materialize=False, dtype=torch.float32):
+    """
+    Construct attention mask that makes sure that objects only attend to each other
+    within the same batch element, and not across batch elements
+
+    Parameters
+    ----------
+    batch: torch.tensor
+        batch object in the torch_geometric.data naming convention
+        contains batch index for each event in a sparse tensor
+    materialize: bool
+        Decides whether a xformers or ('materialized') torch.tensor mask should be returned
+        The xformers mask allows to use the optimized xformers attention kernel, but only runs on gpu
+
+    Returns
+    -------
+    mask: xformers.ops.fmha.attn_bias.BlockDiagonalMask or torch.tensor
+        attention mask, to be used in xformers.ops.memory_efficient_attention
+        or torch.nn.functional.scaled_dot_product_attention
+    """
+    bincounts = torch.bincount(batch).tolist()
+    mask = BlockDiagonalMask.from_seqlens(bincounts, device=batch.device)
+    if materialize:
+        # materialize mask to torch.tensor (only for testing purposes)
+        mask = mask.materialize(shape=(len(batch), len(batch))).to(batch.device, dtype=dtype)
+    return mask
+
+
 def get_flex_attention_mask(batch: torch.Tensor, device: torch.device) -> BlockMask:
     """Returns a mask for the attention mechanism.
     Args:
