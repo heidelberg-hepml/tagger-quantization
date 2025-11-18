@@ -1,3 +1,4 @@
+# 2.3k parameters mini ParT
 _target_: experiments.tagging.wrappers.ParTWrapper
 in_channels: null
 out_channels: null
@@ -12,8 +13,9 @@ net:
 
  attn_reps: 4x0n+1x1n
  num_layers: 1
+ num_cls_layers: 1 # need >=1 class-attention block
  num_heads: 1
- embed_dims: [8,16,8]
+ embed_dims: [8,8,8]
  pair_embed_dims: [4,4,4]
 
  use_amp: ${model.use_amp}
