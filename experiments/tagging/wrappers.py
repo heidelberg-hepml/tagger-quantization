@@ -212,8 +212,6 @@ class TransformerWrapper(AggregatedTaggerWrapper):
     def forward(self, embedding):
         # precompute attention mask to avoid cudaStreamSynchronize
         # from .tolist() in get_xformers_attention_mask
-        dtype = embedding["scalars"].dtype
-        device = embedding["scalars"].device
         batch_withspurions = embedding["batch"]
         is_spurion = embedding["is_spurion"]
         nospurion_idxs = (~is_spurion).nonzero(as_tuple=False).squeeze(-1)
@@ -227,8 +225,7 @@ class TransformerWrapper(AggregatedTaggerWrapper):
             batch = get_batch_from_ptr(ptr)
         mask_kwarg = get_attention_mask(
             batch,
-            dtype=dtype,
-            device=device,
+            dtype=embedding["scalars"].dtype,
             attention_backend=self.attention_backend,
         )
 
@@ -464,7 +461,6 @@ class LGATrWrapper(nn.Module):
         mask_kwarg = get_attention_mask(
             batch,
             dtype=scalars.dtype,
-            device=scalars.device,
             attention_backend=self.attention_backend,
         )
 
@@ -838,7 +834,6 @@ class LoTrWrapper(nn.Module):
         mask_kwarg = get_attention_mask(
             batch,
             dtype=fourmomenta.dtype,
-            device=fourmomenta.device,
             attention_backend=self.attention_backend,
         )
 
