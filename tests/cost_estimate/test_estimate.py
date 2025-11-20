@@ -40,9 +40,11 @@ def execute(exp, architecture, arch_kwargs, seqlen):
     ):
         exp._get_ypred_and_label(data)
     flops_measured = flop_counter.get_total_flops()
-    print(op_counter.total_operations)
     dicts = op_counter.operations_count
+    dicts = dicts  # trick ruff
 
+    """
+    print(op_counter.total_operations)
     def rec_open(asd, label):
         for k, v in asd.items():
             if isinstance(v, dict):
@@ -51,6 +53,7 @@ def execute(exp, architecture, arch_kwargs, seqlen):
                 print(label, k, v)
 
     rec_open(dicts, "")
+    """
 
     flops_estimate = estimate_flops(
         architecture,
@@ -64,14 +67,14 @@ def execute(exp, architecture, arch_kwargs, seqlen):
 @pytest.mark.parametrize(
     "attn_reps,num_heads",
     [
-        # ("4x0n+1x1n", 2),
-        # ("4x0n+1x1n", 8),
-        # ("4x0n+1x1n", 32),
+        ("4x0n+1x1n", 2),
+        ("4x0n+1x1n", 8),
+        ("4x0n+1x1n", 32),
         ("4x0n+1x1n", 64),
     ],
 )
-@pytest.mark.parametrize("mlp_ratio,attn_ratio", [(4, 1)])  # , (2, 2), (2, 1)])
-@pytest.mark.parametrize("framesnet", ["identity"])  # "identity", "learnedpd"])
+@pytest.mark.parametrize("mlp_ratio,attn_ratio", [(4, 1), (2, 2), (2, 1)])
+@pytest.mark.parametrize("framesnet", ["identity", "learnedpd"])
 def test_transformer(framesnet, seqlen, attn_reps, num_heads, mlp_ratio, attn_ratio):
     rep_dim = TensorReps(attn_reps).dim
     channels = rep_dim * num_heads // attn_ratio
@@ -104,7 +107,7 @@ def test_transformer(framesnet, seqlen, attn_reps, num_heads, mlp_ratio, attn_ra
     flops_estimate, flops_measured = execute(exp, architecture, arch_kwargs, seqlen)
 
     ratio = (flops_estimate / flops_measured - 1) * 100
-    # assert abs(ratio) < 5
+    assert abs(ratio) < 5
     print(
         f"{framesnet} channels={channels:>4}; seqlen={seqlen}; attn_ratio={attn_ratio}; mlp_ratio={mlp_ratio}: "
         f"flops_est={flops_estimate:.2e} flops_meas={flops_measured:.2e}; ratio={ratio:.0f}%"
@@ -151,5 +154,51 @@ def test_lgatr(seqlen, hidden_mv_channels, hidden_s_channels, mlp_ratio, attn_ra
     ratio = (flops_estimate / flops_measured - 1) * 100
     print(
         f"channels_mv={hidden_mv_channels:>2}; channels_s={hidden_s_channels:>3}; seqlen={seqlen}; attn_ratio={attn_ratio}; mlp_ratio={mlp_ratio}: "
+        f"flops_est={flops_estimate:.2e} flops_meas={flops_measured:.2e}; ratio={ratio:.0f}%"
+    )
+
+
+@pytest.mark.parametrize("seqlen", [50])
+@pytest.mark.parametrize(
+    "hidden_v_channels,hidden_s_channels",
+    [
+        (16, 32),
+    ],
+)
+@pytest.mark.parametrize("mlp_ratio,attn_ratio", [(1, 1)])  # (4, 1), (2, 2), (2, 1)])
+def test_lotr(seqlen, hidden_v_channels, hidden_s_channels, mlp_ratio, attn_ratio):
+    # has to run on GPU, otherwise attention is not included!
+    arch_kwargs = {
+        "blocks": 1,
+        "seqlen": seqlen + 4,  # 3 spurions and 1 global token
+        "channels_v": hidden_v_channels,
+        "channels_s": hidden_s_channels,
+        "mlp_ratio": mlp_ratio,
+        "attn_ratio": attn_ratio,
+    }
+
+    # create experiment environment
+    with hydra.initialize(config_path="../../config", version_base=None):
+        overrides = [
+            "model=tag_lotr",
+            "save=false",
+            "training.batchsize=1",
+            "data.dataset=mini",
+            "model.net.num_blocks=1",
+            "model.net.compile=false",
+            f"model.net.mlp_ratio={mlp_ratio}",
+            f"model.net.attn_ratio={attn_ratio}",
+            f"model.net.hidden_v_channels={hidden_v_channels}",
+            f"model.net.hidden_s_channels={hidden_s_channels}",
+        ]
+        cfg = hydra.compose(config_name="toptagging", overrides=overrides)
+        exp = TopTaggingExperiment(cfg)
+
+    architecture = "lorentztransformer"
+    flops_estimate, flops_measured = execute(exp, architecture, arch_kwargs, seqlen)
+
+    ratio = (flops_estimate / flops_measured - 1) * 100
+    print(
+        f"channels_v={hidden_v_channels:>2}; channels_s={hidden_s_channels:>3}; seqlen={seqlen}; attn_ratio={attn_ratio}; mlp_ratio={mlp_ratio}: "
         f"flops_est={flops_estimate:.2e} flops_meas={flops_measured:.2e}; ratio={ratio:.0f}%"
     )

@@ -57,6 +57,7 @@ def llocatransformer_cost(
     mlp_ratio=4,
     attn_ratio=1,
     channels_framesnet=128,
+    layers_framesnet=2,
     factor_aw=1,
     factor_aa=1,
     factor_fpfp=1,
@@ -81,7 +82,11 @@ def llocatransformer_cost(
     num_edges = (seqlen + 3) * (seqlen + 2)  # because of spurions
     mul_framesnet = (
         num_edges
-        * (channels_framesnet**2 + 15 * channels_framesnet + 3 * channels_framesnet)
+        * (
+            (layers_framesnet - 2) * channels_framesnet**2
+            + 15 * channels_framesnet
+            + 3 * channels_framesnet
+        )
         * factor_fpfp
     )
 
@@ -171,6 +176,7 @@ def particletransformer_cost(
     seqlen,
     channels,
     channels_pair,
+    layers_pair=3,
     mlp_ratio=4,
     attn_ratio=1,
     factor_aw=1,
@@ -193,8 +199,16 @@ def particletransformer_cost(
     # learnable attention bias
     # - factor 4 for 4 edge features mij, dR2, kT, z
     mul_pairembed = 4 * seqlen**2 * channels_pair**2 * factor_aw
+    mul_pairembed *= layers_pair
 
     mul = mul_transformer + mul_pairembed
+    return mul
+
+
+def lotr_linear_cost(ch1_v, ch2_v, ch1_s, ch2_s, factor):
+    s2s = ch1_s * ch2_s * factor
+    v2v = 4 * ch1_v * ch2_v * factor
+    mul = s2s + v2v
     return mul
 
 
@@ -205,11 +219,63 @@ def lorentztransformer_cost(
     channels_s,
     mlp_ratio=4,
     attn_ratio=1,
-    bits_a=1,
-    bits_w=1,
-    bits_fp=1,
+    factor_aw=1,
+    factor_aa=1,
+    factor_fpfp=1,
 ):
-    pass
+    # 3 spurions and 1 global token
+    seqlen += 4
+
+    # attention projections
+    mul_attnproj = lotr_linear_cost(
+        ch1_v=channels_v,
+        ch2_v=channels_v * attn_ratio,
+        ch1_s=channels_s,
+        ch2_s=channels_s * attn_ratio,
+        factor=factor_aw,
+    )
+    # - factor 4 for Q, K, V, output
+    mul_attnproj *= 4 * seqlen
+
+    # attention
+    # - factor 4 from multivector inner product in attention matrix
+    mul_attn_QK = factor_aa * seqlen**2 * (channels_s + 4 * channels_v) * attn_ratio
+    # - factor 4 from A * mv with scalar A and 4-component mv
+    mul_attn_AV = factor_aa * seqlen**2 * (channels_s + 4 * channels_v) * attn_ratio
+    # - factor 3 for square, mean, normalization
+    # - factor 3 for normalizing Q, K, V
+    mul_attn_norm = 3 * 3 * factor_fpfp * seqlen * (channels_s + 4 * channels_v) * attn_ratio
+    mul_attn = mul_attn_QK + mul_attn_AV + mul_attn_norm
+
+    # MLP projections
+    mul_in = lotr_linear_cost(
+        ch1_v=channels_v,
+        ch2_v=3 * channels_v * mlp_ratio,
+        ch1_s=channels_s,
+        ch2_s=2 * channels_s * mlp_ratio,
+        factor=factor_aw,
+    )
+    # neglect inner products (attention will dominate)
+    mul_out = lotr_linear_cost(
+        ch1_v=channels_v * mlp_ratio,
+        ch2_v=channels_v,
+        ch1_s=channels_s * mlp_ratio,
+        ch2_s=channels_s,
+        factor=factor_aw,
+    )
+    mul_mlp = seqlen * (mul_in + mul_out)
+
+    # layer normalization
+    # - factor 2 for pre-attn and pre-mlp
+    # - factor 3 for square, mean, normalization
+    mul_ln = 2 * 3 * factor_fpfp * seqlen * (channels_s + 4 * channels_v)
+
+    mul = mul_attnproj + mul_attn + mul_mlp + mul_ln
+    print(
+        f"attnproj: {mul_attnproj * 2}, attn: {mul_attn * 2}, mlp: {mul_mlp * 2}, ln: {mul_ln * 2}"
+    )
+    mul *= blocks
+    return mul
 
 
 def get_cost_func(architecture):
