@@ -27,6 +27,9 @@ class TaggingExperiment(BaseExperiment):
         if modelname == "LGATr":
             self.cfg.model.net.in_s_channels = 0 if self.cfg.model.mean_aggregation else 1
             self.cfg.model.net.in_s_channels += self.extra_scalars
+        elif modelname == "LorentzTransformer":
+            self.cfg.model.net.in_s_channels = 0 if self.cfg.model.mean_aggregation else 1
+            self.cfg.model.net.in_s_channels += self.extra_scalars
         elif modelname == "LorentzNet":
             self.cfg.model.net.n_scalar = self.extra_scalars
         elif modelname == "PELICAN":
