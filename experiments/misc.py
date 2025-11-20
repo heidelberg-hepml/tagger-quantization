@@ -50,45 +50,55 @@ def get_xformers_attention_mask(batch, materialize=False, dtype=torch.float32):
     return mask
 
 
-def get_flex_attention_mask(batch: torch.Tensor, device: torch.device) -> BlockMask:
+def get_flex_attention_mask(batch: torch.Tensor) -> BlockMask:
     """Returns a mask for the attention mechanism.
-    Args:
-        batch: Batch vector, maps each token to its sequence in the batch.
-        device: Device to create the mask on.
-    Returns:
+
+    Parameters
+    ----------
+    batch : torch.Tensor
+        Batch vector, maps each token to its sequence in the batch.
+
+    Returns
+    -------
+    BlockMask
         Block-diagonal BlockMask for flex attention, with one block per sequence.
     """
-
     N = batch.size(0)
 
     def jagged_masking(b, h, q_idx, kv_idx):
         return batch[q_idx] == batch[kv_idx]
 
-    mask = create_block_mask(jagged_masking, None, None, N, N, device=device, _compile=True)
+    mask = create_block_mask(jagged_masking, None, None, N, N, device=batch.device, _compile=True)
     return mask
 
 
 def get_attention_mask(
     batch: torch.Tensor,
     attention_backend: str,
-    device: torch.device,
     dtype: torch.dtype,
 ) -> dict[str, torch.Tensor | BlockMask | BlockDiagonalMask]:
     """Returns the attention mask according to the backend.
-    Args:
-        batch: Batch vector, maps each token to its sequence in the batch.
-        attention_backend: Attention backend to use ("xformers" or "flex_attention").
-        device: Device to create the mask on.
-        dtype: Data type of the attention mask (for xformers backend).
-    Returns:
+
+    Parameters
+    ----------
+    batch : torch.Tensor
+        Batch vector, maps each token to its sequence in the batch.
+    attention_backend : str
+        Attention backend to use ("xformers" or "flex_attention").
+    dtype : torch.dtype
+        Data type of the attention mask (for xformers backend).
+
+    Returns
+    -------
+    dict[str, torch.Tensor | BlockMask | BlockDiagonalMask]
         Attention mask for the specified backend.
     """
     if attention_backend == "xformers":
-        materialize = device == torch.device("cpu")
+        materialize = batch.device == torch.device("cpu")
         mask = get_xformers_attention_mask(batch=batch, dtype=dtype, materialize=materialize)
         return {"attn_mask" if materialize else "attn_bias": mask}
     elif attention_backend == "flex_attention":
-        mask = get_flex_attention_mask(batch=batch, device=device)
+        mask = get_flex_attention_mask(batch=batch)
         return {"block_mask": mask}
     else:
         raise ValueError(
