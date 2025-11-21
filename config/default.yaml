@@ -23,7 +23,7 @@ weightquant:
  attn: true
  mlp: true
  bias: false
- framesnet: false
+ framesnet: true
 
  warmup_steps: 0
  quant_period: 10
@@ -41,7 +41,7 @@ inputquant:
 
  mlp: true
  attn: true
- framesnet: false
+ framesnet: true
 
 warm_start_idx: null
 save: true
