@@ -207,7 +207,7 @@ def param_groups_transformer_helper(
             param_groups += [
                 {
                     "params": params_framesnet,
-                    "lr": cfg.training.lr,
+                    "lr": cfg.training.lr_factor_framesnet * cfg.training.lr,
                     "weight_decay": cfg.training.weight_decay_framesnet,
                     "quant_bits": cfg.weightquant.bits,
                 }
@@ -218,13 +218,13 @@ def param_groups_transformer_helper(
             param_groups += [
                 {
                     "params": framesnet_params_q,
-                    "lr": cfg.training.lr,
+                    "lr": cfg.training.lr_factor_framesnet * cfg.training.lr,
                     "weight_decay": cfg.training.weight_decay_framesnet,
                     "quant_bits": cfg.weightquant.bits,
                 },
                 {
                     "params": framesnet_params_noq,
-                    "lr": cfg.training.lr,
+                    "lr": cfg.training.lr_factor_framesnet * cfg.training.lr,
                     "weight_decay": cfg.training.weight_decay_framesnet,
                 },
             ]
@@ -232,7 +232,7 @@ def param_groups_transformer_helper(
         param_groups += [
             {
                 "params": params_framesnet,
-                "lr": cfg.training.lr,
+                "lr": cfg.training.lr_factor_framesnet * cfg.training.lr,
                 "weight_decay": cfg.training.weight_decay_framesnet,
             },
         ]
