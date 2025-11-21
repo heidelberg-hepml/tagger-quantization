@@ -181,12 +181,6 @@ def param_groups_transformer_helper(
 
     param_groups = [
         {
-            # never quantize framesnet
-            "params": params_framesnet,
-            "lr": cfg.training.lr_factor_framesnet * cfg.training.lr,
-            "weight_decay": cfg.training.weight_decay_framesnet,
-        },
-        {
             "params": params_q_wd,
             "lr": cfg.training.lr,
             "weight_decay": cfg.training.weight_decay,
@@ -207,4 +201,42 @@ def param_groups_transformer_helper(
             "weight_decay": cfg.training.weight_decay,
         },
     ]
+
+    framesnet_params_q_nowd = []
+    framesnet_params_q_wd = []
+    framesnet_params_noq_wd = []
+    framesnet_params_noq = []
+    if cfg.weightquant.framesnet:
+        framesnet_params_q_wd += [p for p in params_framesnet if not is_bias(p)]
+        if cfg.weightquant.bias:
+            framesnet_params_q_nowd += [p for p in params_framesnet if is_bias(p)]
+        else:
+            framesnet_params_noq += [p for p in params_framesnet if is_bias(p)]
+
+    else:
+        framesnet_params_noq_wd += [p for p in params_framesnet if not is_bias(p)]
+        framesnet_params_noq += [p for p in params_framesnet if is_bias(p)]
+    param_groups += [
+        {
+            "params": framesnet_params_q_wd,
+            "lr": cfg.training.lr_factor_framesnet * cfg.training.lr,
+            "weight_decay": cfg.training.weight_decay_framesnet,
+            "quant_bits": cfg.weightquant.bits,
+        },
+        {
+            "params": framesnet_params_q_nowd,
+            "lr": cfg.training.lr_factor_framesnet * cfg.training.lr,
+            "quant_bits": cfg.weightquant.bits,
+        },
+        {
+            "params": framesnet_params_noq,
+            "lr": cfg.training.lr_factor_framesnet * cfg.training.lr,
+        },
+        {
+            "params": framesnet_params_noq_wd,
+            "lr": cfg.training.lr_factor_framesnet * cfg.training.lr,
+            "weight_decay": cfg.training.weight_decay_framesnet,
+        },
+    ]
+
     return param_groups
