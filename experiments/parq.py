@@ -120,14 +120,20 @@ def init_param_groups_ParticleTransformer(model, cfg):
     # or in other words, weight_decay only for weight matrices in linear layers
 
     # collect parameters in groups
-    params_inout = (
-        list(model.net.embed.parameters())
-        + list(model.net.fc.parameters())
-        + list(model.net.pair_embed.parameters())
-    )
+    params_inout = []
     params_attn = []
     params_mlp = []
     params_noq = [model.net.cls_token] + list(model.net.norm.parameters())
+
+    # carefully seperate inout (inputs/outputs need high precision) and mlp
+    for i, m in enumerate(model.net.embed.embed):
+        if i <= 3:
+            params_inout += list(m.parameters())
+        else:
+            params_mlp += list(m.parameters())
+    params_inout += list(model.net.pair_embed.parameters())
+    params_inout += list(model.net.fc.parameters())
+
     for block in model.net.blocks + model.net.cls_blocks:
         params_attn += list(block.attn.parameters())
         params_mlp += list(block.fc1.parameters()) + list(block.fc2.parameters())
