@@ -3,6 +3,7 @@ from lgatr.layers import EquiLinear
 from torch import Tensor
 from torch.nn import Linear
 
+from experiments.logger import LOGGER
 from experiments.misc import assert_finite
 
 from .parq import get_quantizer
@@ -31,11 +32,10 @@ def input_quantize_transformer(model, cfg_inputs):
                 cfg=cfg_inputs,
             )
     if cfg_inputs.quantize_framesnet:
-        for layer in model.framesnet.equivectors.layers:
-            input_quantize_module(
-                module=layer,
-                cfg=cfg_inputs,
-            )
+        input_quantize_module(
+            module=model.framesnet,
+            cfg=cfg_inputs,
+        )
 
 
 def input_quantize_ParT(model, cfg_inputs):
@@ -71,6 +71,7 @@ def input_quantize_LGATr(model, cfg_inputs):
 
 
 def input_quantize_module(module, cfg):
+    LOGGER.info(f"Applying input quantization to module: {module.__class__.__name__}")
     for name, child in list(module.named_children()):
         if isinstance(child, Linear):
             new_layer = QuantLinear(
@@ -81,6 +82,9 @@ def input_quantize_module(module, cfg):
                 bits=cfg.bits,
                 dim=cfg.dim,
                 quantize_output=cfg.quantize_output,
+            )
+            LOGGER.info(
+                f"Replaced Linear layer with QuantLinear: {new_layer} in {module.__class__.__name__}"
             )
             module._modules[name] = new_layer
         elif isinstance(child, EquiLinear):
