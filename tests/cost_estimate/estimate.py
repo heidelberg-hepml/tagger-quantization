@@ -80,15 +80,24 @@ def llocatransformer_cost(
 
     # estimate this based on FLOPs (uses bits_fp)
     num_edges = (seqlen + 3) * (seqlen + 2)  # because of spurions
-    mul_framesnet = (
-        num_edges
-        * (
-            (layers_framesnet - 2) * channels_framesnet**2
-            + 15 * channels_framesnet
-            + 3 * channels_framesnet
-        )
-        * factor_fpfp
+    mul_framesnet_in = linear_cost(
+        dim_1=15,
+        dim_2=channels_framesnet,
+        factor=factor_aw,
     )
+    mul_framesnet_out = linear_cost(
+        dim_1=channels_framesnet,
+        dim_2=3,
+        factor=factor_aw,
+    )
+    mul_framesnet_middle = linear_cost(
+        dim_1=channels_framesnet,
+        dim_2=channels_framesnet,
+        factor=factor_aw,
+    )
+    mul_framesnet_middle *= layers_framesnet - 2
+    mul_framesnet = mul_framesnet_in + mul_framesnet_out + mul_framesnet_middle
+    mul_framesnet *= num_edges
 
     mul = mul_transformer + mul_frame2frame + mul_framesnet
     return mul
@@ -271,9 +280,6 @@ def lorentztransformer_cost(
     mul_ln = 2 * 3 * factor_fpfp * seqlen * (channels_s + 4 * channels_v)
 
     mul = mul_attnproj + mul_attn + mul_mlp + mul_ln
-    print(
-        f"attnproj: {mul_attnproj * 2}, attn: {mul_attn * 2}, mlp: {mul_mlp * 2}, ln: {mul_ln * 2}"
-    )
     mul *= blocks
     return mul
 
