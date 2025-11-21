@@ -4,7 +4,6 @@ from torch import Tensor
 from torch.nn import Linear
 
 from experiments.logger import LOGGER
-from experiments.misc import assert_finite
 
 from .parq import get_quantizer
 
@@ -31,7 +30,7 @@ def input_quantize_transformer(model, cfg_inputs):
                 module=block.mlp,
                 cfg=cfg_inputs,
             )
-    if cfg_inputs.quantize_framesnet:
+    if cfg_inputs.framesnet:
         input_quantize_module(
             module=model.framesnet,
             cfg=cfg_inputs,
@@ -71,7 +70,6 @@ def input_quantize_LGATr(model, cfg_inputs):
 
 
 def input_quantize_module(module, cfg):
-    LOGGER.info(f"Applying input quantization to module: {module.__class__.__name__}")
     for name, child in list(module.named_children()):
         if isinstance(child, Linear):
             new_layer = QuantLinear(
@@ -82,9 +80,6 @@ def input_quantize_module(module, cfg):
                 bits=cfg.bits,
                 dim=cfg.dim,
                 quantize_output=cfg.quantize_output,
-            )
-            LOGGER.info(
-                f"Replaced Linear layer with QuantLinear: {new_layer} in {module.__class__.__name__}"
             )
             module._modules[name] = new_layer
         elif isinstance(child, EquiLinear):
@@ -119,7 +114,6 @@ class QuantLayer:
         self.quantize_output = quantize_output
         self.dim = dim
 
-    @assert_finite
     def ste_quantize(self, input: Tensor) -> Tensor:
         """
         Straight-Through Estimator to quantize activations
@@ -147,7 +141,6 @@ class QuantLinear(Linear, QuantLayer):
             quantize_output=quantize_output,
         )
 
-    @assert_finite
     def forward(self, input: Tensor) -> Tensor:
         input = self.ste_quantize(input)
         output = Linear.forward(self, input)
@@ -178,7 +171,6 @@ class QuantEquiLinear(EquiLinear, QuantLayer):
             quantize_output=quantize_output,
         )
 
-    @assert_finite
     def forward(self, multivectors: Tensor, scalars: Tensor | None) -> tuple[Tensor, Tensor | None]:
         multivectors = QuantLayer.ste_quantize(self, multivectors)
         if scalars is not None:

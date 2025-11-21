@@ -96,31 +96,3 @@ def get_attention_mask(
             f"Unsupported attention backend: {attention_backend}. "
             'Supported backends are "xformers" and "flex_attention".'
         )
-
-
-def assert_finite(fn: Callable) -> Callable:
-    """Decorator to assert that all tensors in the inputs and output are finite."""
-
-    def _check(x: Any, label: str) -> None:
-        if torch.is_tensor(x):
-            assert not torch.isinf(x).any(), f"{label} contains inf."
-            assert not torch.isnan(x).any(), f"{label} contains nan."
-        elif isinstance(x, Mapping):
-            for k, v in x.items():
-                _check(v, f"{label}[{k}]")
-        elif isinstance(x, (list, tuple)):
-            for i, item in enumerate(x):
-                _check(item, f"{label}[{i}]")
-
-    def wrapper(*args, **kwargs):
-        for i, arg in enumerate(args):
-            _check(arg, f"Input argument {i}")
-
-        for k, v in kwargs.items():
-            _check(v, f"Input argument {k}")
-
-        output = fn(*args, **kwargs)
-        _check(output, "Output")
-        return output
-
-    return wrapper
