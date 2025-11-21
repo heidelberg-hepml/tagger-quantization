@@ -179,16 +179,7 @@ def param_groups_transformer_helper(
         params_noq_wd += [p for p in params_mlp if not is_bias(p)]
         params_noq += [p for p in params_mlp if is_bias(p)]
 
-    framesnet_dict = {
-        "params": params_framesnet,
-        "lr": cfg.training.lr_factor_framesnet * cfg.training.lr,
-        "weight_decay": cfg.training.weight_decay_framesnet,
-    }
-    if cfg.weightquant.framesnet:
-        framesnet_dict["quant_bits"] = cfg.weightquant.bits
-
     param_groups = [
-        framesnet_dict,
         {
             "params": params_q_wd,
             "lr": cfg.training.lr,
@@ -210,4 +201,30 @@ def param_groups_transformer_helper(
             "weight_decay": cfg.training.weight_decay,
         },
     ]
+
+    if cfg.weightquant.framesnet:
+        framesnet_params_q = [p for p in params_framesnet if not is_bias(p)]
+        framesnet_params_noq = [p for p in params_framesnet if is_bias(p)]
+        param_groups += [
+            {
+                "params": framesnet_params_q,
+                "lr": cfg.training.lr,
+                "weight_decay": cfg.training.weight_decay_framesnet,
+                "quant_bits": cfg.weightquant.bits,
+            },
+            {
+                "params": framesnet_params_noq,
+                "lr": cfg.training.lr,
+                "weight_decay": cfg.training.weight_decay_framesnet,
+            },
+        ]
+    else:
+        framesnet_params_noq = params_framesnet
+        param_groups += [
+            {
+                "params": framesnet_params_noq,
+                "lr": cfg.training.lr,
+                "weight_decay": cfg.training.weight_decay_framesnet,
+            },
+        ]
     return param_groups
