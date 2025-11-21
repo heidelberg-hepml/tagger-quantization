@@ -54,20 +54,6 @@ def input_quantize_ParT(model, cfg_inputs):
             )
 
 
-def input_quantize_LGATr_or_LorentzTransformer(model, cfg_inputs):
-    for block in model.net.blocks:
-        if cfg_inputs.attn:
-            input_quantize_module(
-                module=block.attention,
-                cfg=cfg_inputs,
-            )
-        if cfg_inputs.mlp:
-            input_quantize_module(
-                module=block.mlp,
-                cfg=cfg_inputs,
-            )
-
-
 def input_quantize_module(module, cfg):
     quant_kwargs = dict(
         quantizer=cfg.quantizer, bits=cfg.bits, dim=cfg.dim, quantize_output=cfg.quantize_output
