@@ -1,6 +1,9 @@
+import torch
 from lgatr.layers import EquiLinear
 from torch import Tensor
 from torch.nn import Linear
+
+from experiments.misc import assert_finite
 
 from .parq import get_quantizer
 
@@ -25,6 +28,12 @@ def input_quantize_transformer(model, cfg_inputs):
         if cfg_inputs.mlp:
             input_quantize_module(
                 module=block.mlp,
+                cfg=cfg_inputs,
+            )
+    if cfg_inputs.quantize_framesnet:
+        for layer in model.framesnet.equivectors.layers:
+            input_quantize_module(
+                module=layer,
                 cfg=cfg_inputs,
             )
 
@@ -106,6 +115,7 @@ class QuantLayer:
         self.quantize_output = quantize_output
         self.dim = dim
 
+    @assert_finite
     def ste_quantize(self, input: Tensor) -> Tensor:
         """
         Straight-Through Estimator to quantize activations
@@ -133,6 +143,7 @@ class QuantLinear(Linear, QuantLayer):
             quantize_output=quantize_output,
         )
 
+    @assert_finite
     def forward(self, input: Tensor) -> Tensor:
         input = self.ste_quantize(input)
         output = Linear.forward(self, input)
@@ -163,6 +174,7 @@ class QuantEquiLinear(EquiLinear, QuantLayer):
             quantize_output=quantize_output,
         )
 
+    @assert_finite
     def forward(self, multivectors: Tensor, scalars: Tensor | None) -> tuple[Tensor, Tensor | None]:
         multivectors = QuantLayer.ste_quantize(self, multivectors)
         if scalars is not None:

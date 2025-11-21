@@ -23,6 +23,7 @@ weightquant:
  attn: true
  mlp: true
  bias: false
+ quantize_framesnet: false
 
  warmup_steps: 0
  quant_period: 10
@@ -39,6 +40,7 @@ inputquant:
  attn: true
  dim: null
  quantize_output: true
+ quantize_framesnet: false
 
 warm_start_idx: null
 save: true

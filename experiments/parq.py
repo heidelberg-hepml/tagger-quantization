@@ -179,13 +179,17 @@ def param_groups_transformer_helper(
         params_noq_wd += [p for p in params_mlp if not is_bias(p)]
         params_noq += [p for p in params_mlp if is_bias(p)]
 
+    framesnet_dict = {
+        # never quantize framesnet
+        "params": params_framesnet,
+        "lr": cfg.training.lr_factor_framesnet * cfg.training.lr,
+        "weight_decay": cfg.training.weight_decay_framesnet,
+    }
+    if cfg.weightquant.quantize_framesnet:
+        framesnet_dict["quant_bits"] = cfg.weightquant.bits
+
     param_groups = [
-        {
-            # never quantize framesnet
-            "params": params_framesnet,
-            "lr": cfg.training.lr_factor_framesnet * cfg.training.lr,
-            "weight_decay": cfg.training.weight_decay_framesnet,
-        },
+        framesnet_dict,
         {
             "params": params_q_wd,
             "lr": cfg.training.lr,
