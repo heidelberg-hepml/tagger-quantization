@@ -1,5 +1,8 @@
 # agnostic training config for small taggers
-iterations: 200000
+iterations: 100000
+batchsize: 1024
+
+lr: 1e-2
 
 defaults:
  - tag_default
