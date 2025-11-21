@@ -79,11 +79,11 @@ def input_quantize_module(module, cfg):
             module._modules[name] = new_layer
         elif isinstance(child, LorentzLinear):
             new_layer = QuantLorentzLinear(
-                in_v_channels=child.weight_v.shape[1],
-                out_v_channels=child.weight_v.shape[0],
-                in_s_channels=child.linear_s.in_features,
-                out_s_channels=child.linear_s.out_features,
-                bias=(child.linear_s.bias is not None),
+                in_v_channels=child._in_v_channels,
+                out_v_channels=child._out_v_channels,
+                in_s_channels=child._in_s_channels,
+                out_s_channels=child._out_s_channels,
+                bias=child._bias,
                 **quant_kwargs,
             )
             module._modules[name] = new_layer

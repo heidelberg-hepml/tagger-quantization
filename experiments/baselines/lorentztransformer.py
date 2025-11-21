@@ -126,6 +126,7 @@ class Linear(nn.Module):
         self._out_v_channels = out_v_channels
         self._in_s_channels = in_s_channels
         self._out_s_channels = out_s_channels
+        self._bias = bias
 
         self.weight_v = nn.Parameter(
             torch.empty(
