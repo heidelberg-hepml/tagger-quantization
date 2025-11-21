@@ -203,21 +203,31 @@ def param_groups_transformer_helper(
     ]
 
     if cfg.weightquant.framesnet:
-        framesnet_params_q = [p for p in params_framesnet if not is_bias(p)]
-        framesnet_params_noq = [p for p in params_framesnet if is_bias(p)]
-        param_groups += [
-            {
-                "params": framesnet_params_q,
-                "lr": cfg.training.lr,
-                "weight_decay": cfg.training.weight_decay_framesnet,
-                "quant_bits": cfg.weightquant.bits,
-            },
-            {
-                "params": framesnet_params_noq,
-                "lr": cfg.training.lr,
-                "weight_decay": cfg.training.weight_decay_framesnet,
-            },
-        ]
+        if cfg.weightquant.bias:
+            param_groups += [
+                {
+                    "params": params_framesnet,
+                    "lr": cfg.training.lr,
+                    "weight_decay": cfg.training.weight_decay_framesnet,
+                    "quant_bits": cfg.weightquant.bits,
+                }
+            ]
+        else:
+            framesnet_params_q = [p for p in params_framesnet if not is_bias(p)]
+            framesnet_params_noq = [p for p in params_framesnet if is_bias(p)]
+            param_groups += [
+                {
+                    "params": framesnet_params_q,
+                    "lr": cfg.training.lr,
+                    "weight_decay": cfg.training.weight_decay_framesnet,
+                    "quant_bits": cfg.weightquant.bits,
+                },
+                {
+                    "params": framesnet_params_noq,
+                    "lr": cfg.training.lr,
+                    "weight_decay": cfg.training.weight_decay_framesnet,
+                },
+            ]
     else:
         param_groups += [
             {
@@ -226,4 +236,5 @@ def param_groups_transformer_helper(
                 "weight_decay": cfg.training.weight_decay_framesnet,
             },
         ]
+
     return param_groups
