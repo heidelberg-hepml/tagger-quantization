@@ -1,9 +1,6 @@
-import torch
 from lgatr.layers import EquiLinear
 from torch import Tensor
 from torch.nn import Linear
-
-from experiments.logger import LOGGER
 
 from .parq import get_quantizer
 
