@@ -219,10 +219,9 @@ def param_groups_transformer_helper(
             },
         ]
     else:
-        framesnet_params_noq = params_framesnet
         param_groups += [
             {
-                "params": framesnet_params_noq,
+                "params": params_framesnet,
                 "lr": cfg.training.lr,
                 "weight_decay": cfg.training.weight_decay_framesnet,
             },
