@@ -18,6 +18,7 @@ from experiments.tagging.experiment import TopTaggingExperiment
         ["model=tag_ParT"],
         ["model=tag_transformer"],
         ["model=tag_lgatr"],
+        ["model=tag_lotr"],
     ],
 )
 def test_network_quantization(framesnet, model_list):
