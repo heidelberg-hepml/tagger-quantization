@@ -27,6 +27,11 @@ def input_quantize_transformer(model, cfg_inputs):
                 module=block.mlp,
                 cfg=cfg_inputs,
             )
+    if cfg_inputs.framesnet:
+        input_quantize_module(
+            module=model.framesnet,
+            cfg=cfg_inputs,
+        )
 
 
 def input_quantize_ParT(model, cfg_inputs):

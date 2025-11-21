@@ -23,6 +23,7 @@ weightquant:
  attn: true
  mlp: true
  bias: false
+ framesnet: false
 
  warmup_steps: 0
  quant_period: 10
@@ -35,10 +36,12 @@ inputquant:
  use: false
  bits: 8
  quantizer: uniform
- mlp: true
- attn: true
  dim: null
  quantize_output: true
+
+ mlp: true
+ attn: true
+ framesnet: false
 
 warm_start_idx: null
 save: true
