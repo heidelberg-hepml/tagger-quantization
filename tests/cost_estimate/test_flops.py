@@ -7,9 +7,8 @@ from torch.utils.flop_counter import FlopCounterMode
 from torch_operation_counter import OperationsCounterMode
 
 import experiments.logger
+from cost_estimate.estimate import estimate_flops
 from experiments.tagging.experiment import TopTaggingExperiment
-
-from .estimate import estimate_flops
 
 
 def execute(exp, architecture, arch_kwargs, seqlen):

@@ -383,6 +383,9 @@ def estimate_energy(
         def get_energy(mul_op, dtype):
             return 0.5 * get_energy_cost_estimate(machine="A100-PCle", dtype=dtype)
 
+    else:
+        raise ValueError(f"Unknown mode: {mode}")
+
     def get_energy_MAC(dtype):
         return get_energy_cost_7nm_literature(
             mul_op=True, dtype=dtype
