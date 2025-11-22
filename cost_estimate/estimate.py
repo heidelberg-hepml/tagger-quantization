@@ -387,18 +387,16 @@ def estimate_energy(
         raise ValueError(f"Unknown mode: {mode}")
 
     def get_energy_MAC(dtype):
-        return get_energy_cost_7nm_literature(
-            mul_op=True, dtype=dtype
-        ) + get_energy_cost_7nm_literature(mul_op=False, dtype=dtype)
+        return get_energy(mul_op=True, dtype=dtype) + get_energy(mul_op=False, dtype=dtype)
 
     func = get_cost_func(architecture)
     factor_aa = get_energy_MAC(dtype=dtype_a)
+    factor_fpfp = get_energy_MAC(dtype=dtype_fp)
     if dtype_w == "ternary":
         factor_aw = get_energy(mul_op=False, dtype=dtype_a)
     else:
         assert dtype_w == dtype_a
         factor_aw = get_energy_MAC(dtype=dtype_a)
-    factor_fpfp = get_energy_MAC(dtype=dtype_fp)
     factors = dict(factor_aw=factor_aw, factor_aa=factor_aa, factor_fpfp=factor_fpfp)
     energy = func(
         **arch_kwargs,
