@@ -35,7 +35,7 @@ weightquant:
 inputquant:
  use: false
  bits: 8
- quantizer: torchfloate4m3
+ quantizer: torchfloat8e4m3
  dim: null
  quantize_output: true
 
