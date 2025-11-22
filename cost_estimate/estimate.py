@@ -6,7 +6,7 @@ Global comments
 """
 
 
-def linear_cost(dim_1, dim_2, factor, factor_bias=0):
+def linear_cost(dim_1, dim_2, factor, factor_bias):
     cost_mul = dim_1 * dim_2 * factor
     cost_bias = dim_2 * factor_bias  # multiplicative factor
     cost = cost_mul + cost_bias
@@ -35,6 +35,7 @@ def transformer_cost(
         dim_1=seqlen,
         dim_2=seqlen,
         factor=factor_aa,
+        factor_bias=0,
     )
     # - factor 2 for A=Q*K and O=A*V
     cost_attn *= 2 * channels * attn_ratio
@@ -64,6 +65,7 @@ def llocatransformer_cost(
     attn_ratio=1,
     channels_framesnet=128,
     layers_framesnet=2,
+    hidden_v_fraction=0.5,
     factor_aw=1,
     factor_aa=1,
     factor_fpfp=1,
@@ -82,7 +84,9 @@ def llocatransformer_cost(
 
     # frame-to-frame transformations
     # - factor 4 for f2f_QKV (3) and f2f_output (1)
-    cost_frame2frame = 4 * blocks * seqlen * channels * factor_fpfp
+    n_vectors = 4 * channels * hidden_v_fraction // 4
+    # - factor 4**2 for 4x4 matrix multiplication
+    cost_frame2frame = blocks * seqlen * n_vectors * factor_fpfp * 4**2
 
     # estimate this based on FLOPs (uses bits_fp)
     num_edges = (seqlen + 3) * (seqlen + 2)  # because of spurions
@@ -104,15 +108,21 @@ def llocatransformer_cost(
         factor=factor_aw,
         factor_bias=factor_aa,
     )
-    cost_framesnet_middle *= layers_framesnet - 2
+    cost_framesnet_middle *= layers_framesnet - 1
     cost_framesnet = cost_framesnet_in + cost_framesnet_out + cost_framesnet_middle
     cost_framesnet *= num_edges
 
-    cost = cost_transformer + cost_frame2frame + cost_framesnet
+    # rough estimate for orthonormalization cost
+    empirical_operations_per_frame = (
+        3000  # estimated using https://github.com/SamirMoustafa/torch-operation-counter
+    )
+    cost_orthonormalization = seqlen * empirical_operations_per_frame * factor_fpfp
+
+    cost = cost_transformer + cost_frame2frame + cost_framesnet + cost_orthonormalization
     return cost
 
 
-def lgatr_linear_cost(ch1_mv, ch2_mv, ch1_s, ch2_s, factor, factor_bias=0):
+def lgatr_linear_cost(ch1_mv, ch2_mv, ch1_s, ch2_s, factor, factor_bias):
     cost_s2s = ch1_s * ch2_s * factor
     cost_2s2_bias = ch2_s * factor_bias
     # - factor 2 for possibility to go either to scalar or pseudoscalar
@@ -240,7 +250,7 @@ def particletransformer_cost(
     return cost
 
 
-def lotr_linear_cost(ch1_v, ch2_v, ch1_s, ch2_s, factor, factor_bias=0):
+def lotr_linear_cost(ch1_v, ch2_v, ch1_s, ch2_s, factor, factor_bias):
     cost_s2s = ch1_s * ch2_s * factor
     cost_s2s_bias = ch2_s * factor_bias
     # - factor 4 for 4 components of vector

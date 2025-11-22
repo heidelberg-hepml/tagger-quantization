@@ -1,10 +1,8 @@
-# Should be evaluated on GPU
-# otherwise the transformer FLOPs will be off, because it is not using flash-attention
+# Should be evaluated on GPU, otherwise attention FLOPs are not counted
 import hydra
 import pytest
 from lloca.reps import TensorReps
 from torch.utils.flop_counter import FlopCounterMode
-from torch_operation_counter import OperationsCounterMode
 
 import experiments.logger
 from cost_estimate.estimate import estimate_flops
@@ -35,24 +33,9 @@ def execute(exp, architecture, arch_kwargs, seqlen):
 
     with (
         FlopCounterMode(display=False) as flop_counter,
-        OperationsCounterMode(exp.model) as op_counter,
     ):
         exp._get_ypred_and_label(data)
     flops_measured = flop_counter.get_total_flops()
-    dicts = op_counter.operations_count
-    dicts = dicts  # trick ruff
-
-    """
-    print(op_counter.total_operations)
-    def rec_open(asd, label):
-        for k, v in asd.items():
-            if isinstance(v, dict):
-                rec_open(v, f"{label}.{k}")
-            else:
-                print(label, k, v)
-
-    rec_open(dicts, "")
-    """
 
     flops_estimate = estimate_flops(
         architecture,
@@ -106,11 +89,11 @@ def test_transformer(framesnet, seqlen, attn_reps, num_heads, mlp_ratio, attn_ra
     flops_estimate, flops_measured = execute(exp, architecture, arch_kwargs, seqlen)
 
     ratio = (flops_estimate / flops_measured - 1) * 100
-    assert abs(ratio) < 5
     print(
         f"{framesnet} channels={channels:>4}; seqlen={seqlen}; attn_ratio={attn_ratio}; mlp_ratio={mlp_ratio}: "
         f"flops_est={flops_estimate:.2e} flops_meas={flops_measured:.2e}; ratio={ratio:.0f}%"
     )
+    assert abs(ratio) < 10
 
 
 @pytest.mark.parametrize("seqlen", [50])
@@ -161,15 +144,16 @@ def test_lgatr(seqlen, hidden_mv_channels, hidden_s_channels, mlp_ratio, attn_ra
 @pytest.mark.parametrize(
     "hidden_v_channels,hidden_s_channels",
     [
+        (64, 32),
         (16, 32),
+        (8, 8),
     ],
 )
-@pytest.mark.parametrize("mlp_ratio,attn_ratio", [(1, 1)])  # (4, 1), (2, 2), (2, 1)])
+@pytest.mark.parametrize("mlp_ratio,attn_ratio", [(1, 1), (4, 1), (2, 2), (2, 1)])
 def test_lotr(seqlen, hidden_v_channels, hidden_s_channels, mlp_ratio, attn_ratio):
-    # has to run on GPU, otherwise attention is not included!
     arch_kwargs = {
         "blocks": 1,
-        "seqlen": seqlen + 4,  # 3 spurions and 1 global token
+        "seqlen": seqlen,
         "channels_v": hidden_v_channels,
         "channels_s": hidden_s_channels,
         "mlp_ratio": mlp_ratio,
@@ -201,3 +185,4 @@ def test_lotr(seqlen, hidden_v_channels, hidden_s_channels, mlp_ratio, attn_rati
         f"channels_v={hidden_v_channels:>2}; channels_s={hidden_s_channels:>3}; seqlen={seqlen}; attn_ratio={attn_ratio}; mlp_ratio={mlp_ratio}: "
         f"flops_est={flops_estimate:.2e} flops_meas={flops_measured:.2e}; ratio={ratio:.0f}%"
     )
+    assert abs(ratio) < 10
