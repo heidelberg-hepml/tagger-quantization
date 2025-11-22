@@ -122,6 +122,40 @@ def llocatransformer_cost(
     return cost
 
 
+def particletransformer_cost(
+    blocks,
+    seqlen,
+    channels,
+    channels_pair,
+    layers_pair=3,
+    mlp_ratio=4,
+    attn_ratio=1,
+    factor_aw=1,
+    factor_aa=1,
+    factor_fpfp=1,
+):
+    # - neglect difference between self-attention and class-attention blocks
+    # - neglect cost of adding edge features to attention scores
+    cost_transformer = transformer_cost(
+        blocks=blocks,
+        seqlen=seqlen,
+        channels=channels,
+        mlp_ratio=mlp_ratio,
+        attn_ratio=attn_ratio,
+        factor_aw=factor_aw,
+        factor_aa=factor_aa,
+        factor_fpfp=factor_fpfp,
+    )
+
+    # learnable attention bias
+    # - factor 4 for 4 edge features mij, dR2, kT, z
+    cost_pairembed = 4 * seqlen**2 * channels_pair**2 * factor_aw
+    cost_pairembed *= layers_pair
+
+    cost = cost_transformer + cost_pairembed
+    return cost
+
+
 def lgatr_linear_cost(ch1_mv, ch2_mv, ch1_s, ch2_s, factor, factor_bias):
     cost_s2s = ch1_s * ch2_s * factor
     cost_2s2_bias = ch2_s * factor_bias
@@ -129,7 +163,8 @@ def lgatr_linear_cost(ch1_mv, ch2_mv, ch1_s, ch2_s, factor, factor_bias):
     cost_mv2s_s2mv = 2 * (ch1_s * ch2_mv + ch1_mv * ch2_s) * factor
     cost_mv2s_s2mv_bias = 2 * (ch2_mv + ch2_s) * factor_bias
     # - factor 10 for 10 linear maps on multivectors
-    cost_mv2mv = 10 * ch1_mv * ch2_mv * factor
+    # - factor 2 * 16 because currently inefficient but generic einsum approach is used
+    cost_mv2mv = 10 * 2 * 16 * ch1_mv * ch2_mv * factor
     cost_mv2mv_bias = 10 * ch2_mv * factor_bias
     cost = (
         cost_s2s
@@ -213,40 +248,6 @@ def lgatr_cost(
 
     cost = cost_attnproj + cost_attn + cost_mlp + cost_ln
     cost *= blocks
-    return cost
-
-
-def particletransformer_cost(
-    blocks,
-    seqlen,
-    channels,
-    channels_pair,
-    layers_pair=3,
-    mlp_ratio=4,
-    attn_ratio=1,
-    factor_aw=1,
-    factor_aa=1,
-    factor_fpfp=1,
-):
-    # - neglect difference between self-attention and class-attention blocks
-    # - neglect cost of adding edge features to attention scores
-    cost_transformer = transformer_cost(
-        blocks=blocks,
-        seqlen=seqlen,
-        channels=channels,
-        mlp_ratio=mlp_ratio,
-        attn_ratio=attn_ratio,
-        factor_aw=factor_aw,
-        factor_aa=factor_aa,
-        factor_fpfp=factor_fpfp,
-    )
-
-    # learnable attention bias
-    # - factor 4 for 4 edge features mij, dR2, kT, z
-    cost_pairembed = 4 * seqlen**2 * channels_pair**2 * factor_aw
-    cost_pairembed *= layers_pair
-
-    cost = cost_transformer + cost_pairembed
     return cost
 
 

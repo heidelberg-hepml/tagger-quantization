@@ -100,10 +100,12 @@ def test_transformer(framesnet, seqlen, attn_reps, num_heads, mlp_ratio, attn_ra
 @pytest.mark.parametrize(
     "hidden_mv_channels,hidden_s_channels",
     [
+        (64, 32),
         (16, 32),
+        (8, 8),
     ],
 )
-@pytest.mark.parametrize("mlp_ratio,attn_ratio", [(1, 1)])  # (4, 1), (2, 2), (2, 1)])
+@pytest.mark.parametrize("mlp_ratio,attn_ratio", [(1, 1), (4, 1), (2, 2), (2, 1)])
 def test_lgatr(seqlen, hidden_mv_channels, hidden_s_channels, mlp_ratio, attn_ratio):
     arch_kwargs = {
         "blocks": 1,
@@ -138,6 +140,7 @@ def test_lgatr(seqlen, hidden_mv_channels, hidden_s_channels, mlp_ratio, attn_ra
         f"channels_mv={hidden_mv_channels:>2}; channels_s={hidden_s_channels:>3}; seqlen={seqlen}; attn_ratio={attn_ratio}; mlp_ratio={mlp_ratio}: "
         f"flops_est={flops_estimate:.2e} flops_meas={flops_measured:.2e}; ratio={ratio:.0f}%"
     )
+    assert abs(ratio) < 20
 
 
 @pytest.mark.parametrize("seqlen", [50])
