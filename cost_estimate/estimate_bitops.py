@@ -3,7 +3,7 @@ import json
 from cost_estimate.estimate import estimate_bitops, estimate_flops
 
 SEQLEN = 50
-ARCHS = ["transformer", "particletransformer", "llocatransformer", "lorentztransformer"]
+ARCHS = ["transformer", "particletransformer", "llocatransformer", "lorentztransformer", "lgatr"]
 BITS = [
     (32, 32),
     (16, 16),
@@ -32,6 +32,8 @@ def get_arch_kwargs(arch):
         return dict(blocks=1, channels_v=1, channels_s=16, mlp_ratio=1, attn_ratio=1)
     elif arch == "lorentztransformer":
         return dict(blocks=1, channels_v=1, channels_s=16, mlp_ratio=1, attn_ratio=1)
+    elif arch == "lgatr":
+        return dict(blocks=1, channels_mv=3, channels_s=8, mlp_ratio=1, attn_ratio=1)
     else:
         raise ValueError(f"Unknown architecture: {arch}")
 

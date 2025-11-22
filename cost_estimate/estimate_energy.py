@@ -9,6 +9,7 @@ ARCHNAMES = [
     "llocatransformer",
     "lorentztransformer",
     "lorentztransformer_big",
+    "lgatr",
 ]
 DTYPES = [
     ("float32", "float32"),
@@ -46,6 +47,8 @@ def get_arch_kwargs(arch):
         return "lorentztransformer", dict(
             blocks=12, channels_v=32, channels_s=96, mlp_ratio=4, attn_ratio=1
         )
+    elif arch == "lgatr":
+        return "lgatr", dict(blocks=12, channels_mv=16, channels_s=32, mlp_ratio=2, attn_ratio=2)
     else:
         raise ValueError(f"Unknown architecture: {arch}")
 

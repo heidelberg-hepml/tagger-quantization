@@ -114,7 +114,7 @@ def llocatransformer_cost(
 
     # rough estimate for orthonormalization cost
     empirical_operations_per_frame = (
-        3000  # estimated using https://github.com/SamirMoustafa/torch-operation-counter
+        300  # estimated using https://github.com/SamirMoustafa/torch-operation-counter
     )
     cost_orthonormalization = seqlen * empirical_operations_per_frame * factor_fpfp
 
