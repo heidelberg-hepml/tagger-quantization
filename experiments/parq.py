@@ -73,7 +73,7 @@ def init_parq_optimizer(base_optimizer, cfg):
 
 
 def init_parq_param_groups(model, cfg, modelname, param_groups=None):
-    if modelname in ["Transformer", "LGATr"]:
+    if modelname in ["Transformer", "LGATr", "LorentzTransformer"]:
         # Transformer and LGATr use the same high-level module syntax
         assert param_groups is None  # not manually specified for these models
         param_groups = init_param_groups_transformer(model, cfg)
@@ -120,14 +120,20 @@ def init_param_groups_ParticleTransformer(model, cfg):
     # or in other words, weight_decay only for weight matrices in linear layers
 
     # collect parameters in groups
-    params_inout = (
-        list(model.net.embed.parameters())
-        + list(model.net.fc.parameters())
-        + list(model.net.pair_embed.parameters())
-    )
+    params_inout = []
     params_attn = []
     params_mlp = []
     params_noq = [model.net.cls_token] + list(model.net.norm.parameters())
+
+    # carefully seperate inout (inputs/outputs need high precision) and mlp
+    for i, m in enumerate(model.net.embed.embed):
+        if i <= 3:
+            params_inout += list(m.parameters())
+        else:
+            params_mlp += list(m.parameters())
+    params_inout += list(model.net.pair_embed.parameters())
+    params_inout += list(model.net.fc.parameters())
+
     for block in model.net.blocks + model.net.cls_blocks:
         params_attn += list(block.attn.parameters())
         params_mlp += list(block.fc1.parameters()) + list(block.fc2.parameters())
@@ -152,29 +158,25 @@ def param_groups_transformer_helper(
     def is_bias(param):
         return param.ndim == 1
 
-    def include_params(in_list, out_quant_wd, out_quant_nowd, out_unquant):
-        out_quant_wd += [p for p in in_list if not is_bias(p)]
-        if cfg.weightquant.bias:
-            out_quant_nowd += [p for p in in_list if is_bias(p)]
-        else:
-            out_unquant += [p for p in in_list if is_bias(p)]
+    def include_params(in_list, out_q_wd, out_noq):
+        out_q_wd += [p for p in in_list if not is_bias(p)]
+        out_noq += [p for p in in_list if is_bias(p)]
 
     # divide backbone parameters
-    params_q_nowd = []
     params_q_wd = []
     params_noq_wd = []
     if cfg.weightquant.inout:
-        include_params(params_inout, params_q_wd, params_q_nowd, params_noq)
+        include_params(params_inout, params_q_wd, params_noq)
     else:
         params_noq_wd += [p for p in params_inout if not is_bias(p)]
         params_noq += [p for p in params_inout if is_bias(p)]
     if cfg.weightquant.attn:
-        include_params(params_attn, params_q_wd, params_q_nowd, params_noq)
+        include_params(params_attn, params_q_wd, params_noq)
     else:
         params_noq_wd += [p for p in params_attn if not is_bias(p)]
         params_noq += [p for p in params_attn if is_bias(p)]
     if cfg.weightquant.mlp:
-        include_params(params_mlp, params_q_wd, params_q_nowd, params_noq)
+        include_params(params_mlp, params_q_wd, params_noq)
     else:
         params_noq_wd += [p for p in params_mlp if not is_bias(p)]
         params_noq += [p for p in params_mlp if is_bias(p)]
@@ -184,11 +186,6 @@ def param_groups_transformer_helper(
             "params": params_q_wd,
             "lr": cfg.training.lr,
             "weight_decay": cfg.training.weight_decay,
-            "quant_bits": cfg.weightquant.bits,
-        },
-        {
-            "params": params_q_nowd,
-            "lr": cfg.training.lr,
             "quant_bits": cfg.weightquant.bits,
         },
         {
@@ -202,30 +199,20 @@ def param_groups_transformer_helper(
         },
     ]
 
-    framesnet_params_q_nowd = []
     framesnet_params_q_wd = []
     framesnet_params_noq_wd = []
-    framesnet_params_noq = []
+    framesnet_params_noq = [p for p in params_framesnet if is_bias(p)]
+    weights = [p for p in params_framesnet if not is_bias(p)]
     if cfg.weightquant.framesnet:
-        framesnet_params_q_wd += [p for p in params_framesnet if not is_bias(p)]
-        if cfg.weightquant.bias:
-            framesnet_params_q_nowd += [p for p in params_framesnet if is_bias(p)]
-        else:
-            framesnet_params_noq += [p for p in params_framesnet if is_bias(p)]
-
+        framesnet_params_q_wd += weights
     else:
-        framesnet_params_noq_wd += [p for p in params_framesnet if not is_bias(p)]
-        framesnet_params_noq += [p for p in params_framesnet if is_bias(p)]
+        framesnet_params_noq_wd += weights
+
     param_groups += [
         {
             "params": framesnet_params_q_wd,
             "lr": cfg.training.lr_factor_framesnet * cfg.training.lr,
             "weight_decay": cfg.training.weight_decay_framesnet,
-            "quant_bits": cfg.weightquant.bits,
-        },
-        {
-            "params": framesnet_params_q_nowd,
-            "lr": cfg.training.lr_factor_framesnet * cfg.training.lr,
             "quant_bits": cfg.weightquant.bits,
         },
         {

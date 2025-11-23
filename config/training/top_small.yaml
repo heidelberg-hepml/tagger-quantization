@@ -1,3 +1,4 @@
+
 # tuned training config for small taggers
 # yields around AUC=0.9805 for a vanilla Transformer, matching the SAL-T paper
 iterations: 200000

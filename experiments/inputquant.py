@@ -2,12 +2,14 @@ from lgatr.layers import EquiLinear
 from torch import Tensor
 from torch.nn import Linear
 
+from experiments.baselines.lorentztransformer import Linear as LorentzLinear
+
 from .parq import get_quantizer
 
 
 def input_quantize(model, modelname, cfg_inputs):
     # Replace linear layers by linear layers with input quantization inplace
-    if modelname in ["Transformer", "LGATr"]:
+    if modelname in ["Transformer", "LGATr", "LorentzTransformer"]:
         input_quantize_transformer(model, cfg_inputs)
     elif modelname == "ParticleTransformer":
         input_quantize_ParT(model, cfg_inputs)
@@ -52,44 +54,37 @@ def input_quantize_ParT(model, cfg_inputs):
             )
 
 
-def input_quantize_LGATr(model, cfg_inputs):
-    for block in model.net.blocks:
-        if cfg_inputs.attn:
-            input_quantize_module(
-                module=block.attention,
-                cfg=cfg_inputs,
-            )
-        if cfg_inputs.mlp:
-            input_quantize_module(
-                module=block.mlp,
-                cfg=cfg_inputs,
-            )
-
-
 def input_quantize_module(module, cfg):
+    quant_kwargs = dict(
+        quantizer=cfg.quantizer, bits=cfg.bits, dim=cfg.dim, quantize_output=cfg.quantize_output
+    )
     for name, child in list(module.named_children()):
         if isinstance(child, Linear):
             new_layer = QuantLinear(
                 child.in_features,
                 child.out_features,
                 bias=(child.bias is not None),
-                quantizer=cfg.quantizer,
-                bits=cfg.bits,
-                dim=cfg.dim,
-                quantize_output=cfg.quantize_output,
+                **quant_kwargs,
             )
             module._modules[name] = new_layer
         elif isinstance(child, EquiLinear):
             new_layer = QuantEquiLinear(
-                in_mv_channels=child.weight.shape[1],
-                out_mv_channels=child.weight.shape[0],
-                in_s_channels=(child.s2mvs.weight.shape[1] if child.s2mvs is not None else 0),
-                out_s_channels=(child.mvs2s.weight.shape[0] if child.mvs2s is not None else 0),
-                bias=(child.bias is not None),
-                quantizer=cfg.quantizer,
-                bits=cfg.bits,
-                dim=cfg.dim,
-                quantize_output=cfg.quantize_output,
+                in_mv_channels=child._in_mv_channels,
+                out_mv_channels=child._out_mv_channels,
+                in_s_channels=(child._in_s_channels if child._in_s_channels is not None else 0),
+                out_s_channels=(child._out_s_channels if child._out_s_channels is not None else 0),
+                bias=child._bias,
+                **quant_kwargs,
+            )
+            module._modules[name] = new_layer
+        elif isinstance(child, LorentzLinear):
+            new_layer = QuantLorentzLinear(
+                in_v_channels=child._in_v_channels,
+                out_v_channels=child._out_v_channels,
+                in_s_channels=child._in_s_channels,
+                out_s_channels=child._out_s_channels,
+                bias=child._bias,
+                **quant_kwargs,
             )
             module._modules[name] = new_layer
         else:
@@ -181,3 +176,32 @@ class QuantEquiLinear(EquiLinear, QuantLayer):
             return output_mv, output_s
         else:
             return output
+
+
+class QuantLorentzLinear(LorentzLinear, QuantLayer):
+    def __init__(
+        self,
+        *args,
+        quantizer: str = "uniform",
+        bits: int = 8,
+        dim: int | None = None,
+        quantize_output: bool = True,
+        **kwargs,
+    ):
+        LorentzLinear.__init__(self, *args, **kwargs)
+        QuantLayer.__init__(
+            self,
+            quantizer=quantizer,
+            bits=bits,
+            dim=dim,
+            quantize_output=quantize_output,
+        )
+
+    def forward(self, vectors: Tensor, scalars: Tensor) -> Tensor:
+        vectors = self.ste_quantize(vectors)
+        scalars = self.ste_quantize(scalars)
+        vectors_out, scalars_out = LorentzLinear.forward(self, vectors, scalars)
+        if self.quantize_output:
+            vectors_out = QuantLayer.ste_quantize(self, vectors_out)
+            scalars_out = QuantLayer.ste_quantize(self, scalars_out)
+        return vectors_out, scalars_out

@@ -22,7 +22,6 @@ weightquant:
  inout: false
  attn: true
  mlp: true
- bias: false
  framesnet: true
 
  warmup_steps: 0

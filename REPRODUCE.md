@@ -27,11 +27,11 @@ python data/collect_data.py toptagging
 Table 1 (1M taggers)
 ```bash
 python run.py -cp config model=tag_top_transformer training=top_transformer
-python run.py -cp config model=tag_top_transformer training=top_transformer use_amp=true
-python run.py -cp config model=tag_top_transformer training=top_transformer use_amp=true inputquant.use=true
+python run.py -cp config model=tag_top_transformer training=top_transformer model.use_amp=true
+python run.py -cp config model=tag_top_transformer training=top_transformer model.use_amp=true inputquant.use=true
 python run.py -cp config model=tag_top_transformer training=top_transformer weightquant.use=true
-python run.py -cp config model=tag_top_transformer training=top_transformer use_amp=true weightquant.use=true
-python run.py -cp config model=tag_top_transformer training=top_transformer use_amp=true inputquant.use=true weightquant.use=true
+python run.py -cp config model=tag_top_transformer training=top_transformer model.use_amp=true weightquant.use=true
+python run.py -cp config model=tag_top_transformer training=top_transformer model.use_amp=true inputquant.use=true weightquant.use=true
 
 # repeat different quantization levels for each of these
 python run.py -cp config model=tag_lgatr training=top_lgatr
@@ -43,11 +43,11 @@ python run.py -cp config model=tag_top_transformer training=top_transformer mode
 Table 2 (1k taggers)
 ```bash
 python run.py -cp config model=tag_transformer_1k training=top_small
-python run.py -cp config model=tag_transformer_1k training=top_small use_amp=true
-python run.py -cp config model=tag_transformer_1k training=top_small use_amp=true inputquant.use=true
+python run.py -cp config model=tag_transformer_1k training=top_small model.use_amp=true
+python run.py -cp config model=tag_transformer_1k training=top_small model.use_amp=true inputquant.use=true
 python run.py -cp config model=tag_transformer_1k training=top_small weightquant.use=true
-python run.py -cp config model=tag_transformer_1k training=top_small use_amp=true weightquant.use=true
-python run.py -cp config model=tag_transformer_1k training=top_small use_amp=true inputquant.use=true weightquant.use=true
+python run.py -cp config model=tag_transformer_1k training=top_small model.use_amp=true weightquant.use=true
+python run.py -cp config model=tag_transformer_1k training=top_small model.use_amp=true inputquant.use=true weightquant.use=true
 
 # repeat different quantization levels for each of these
 python run.py -cp config model=tag_lgatr_1k training=top_small

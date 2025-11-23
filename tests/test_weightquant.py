@@ -18,9 +18,10 @@ from experiments.tagging.experiment import TopTaggingExperiment
         ["model=tag_ParT"],
         ["model=tag_transformer"],
         ["model=tag_lgatr"],
+        ["model=tag_lotr"],
     ],
 )
-def test_network_quantization(framesnet, model_list):
+def test_weightquant_consistency(framesnet, model_list):
     experiments.logger.LOGGER.disabled = True  # turn off logging
 
     # create experiment environment

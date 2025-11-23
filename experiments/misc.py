@@ -1,8 +1,15 @@
 from collections.abc import Mapping
 
 import torch
-from torch.nn.attention.flex_attention import BlockMask, create_block_mask
-from xformers.ops.fmha.attn_bias import BlockDiagonalMask
+
+try:
+    from torch.nn.attention.flex_attention import create_block_mask
+except ModuleNotFoundError:
+    pass
+try:
+    from xformers.ops.fmha.attn_bias import BlockDiagonalMask
+except ModuleNotFoundError:
+    pass
 
 
 def get_device() -> torch.device:
@@ -50,7 +57,7 @@ def get_xformers_attention_mask(batch, materialize=False, dtype=torch.float32):
     return mask
 
 
-def get_flex_attention_mask(batch: torch.Tensor) -> BlockMask:
+def get_flex_attention_mask(batch: torch.Tensor):
     """Returns a mask for the attention mechanism.
 
     Parameters
@@ -76,7 +83,7 @@ def get_attention_mask(
     batch: torch.Tensor,
     attention_backend: str,
     dtype: torch.dtype,
-) -> dict[str, torch.Tensor | BlockMask | BlockDiagonalMask]:
+):
     """Returns the attention mask according to the backend.
 
     Parameters
