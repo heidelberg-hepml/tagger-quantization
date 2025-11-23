@@ -13,6 +13,13 @@ BITS = [
     (8, 2),
 ]
 
+MAP = {
+    32: "float32",
+    16: "float16",
+    8: "float8",
+    2: "ternary",
+}
+
 
 def get_arch_kwargs(arch):
     if arch == "transformer":
@@ -57,7 +64,7 @@ def main(save=True):
             print(
                 f"{arch:<20} bits_a={bits_a:>2} bits_w={bits_w:>2}: bitops={bitops:.1e}, flops={flops:.1e}"
             )
-            results_sub[f"{bits_a},{bits_w}"] = bitops
+            results_sub[f"{MAP[bits_a]},{MAP[bits_w]}"] = bitops
         results[arch] = results_sub
 
     if save:
