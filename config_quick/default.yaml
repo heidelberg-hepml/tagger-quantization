@@ -23,7 +23,7 @@ weightquant:
  attn: true
  mlp: true
  bias: false
- framesnet: false
+ framesnet: true
 
  warmup_steps: 0
  quant_period: 10
@@ -35,13 +35,13 @@ weightquant:
 inputquant:
  use: false
  bits: 8
- quantizer: uniform
+ quantizer: torchfloat8e4m3
  dim: null
  quantize_output: true
 
  mlp: true
  attn: true
- framesnet: false
+ framesnet: true
 
 warm_start_idx: null
 save: true
