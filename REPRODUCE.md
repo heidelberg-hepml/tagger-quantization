@@ -55,3 +55,23 @@ python run.py -cp config model=tag_lotr_1k training=top_small
 python run.py -cp config model=tag_ParT_1k training=top_small
 python run.py -cp config model=tag_transformer_1k training=top_small model/framesnet=learnedpd model/framesnet/equivectors=equimlp_1k
 ```
+
+### 4) Estimating computational cost
+
+The cost models in `cost_estimate/` can be used to estimate the energy consumption (cost measure on GPUs) as well as the number of bit-operations (cost measure on FPGAs).
+
+The cost models are calibrated by comparing the corresponding FLOPs to FLOPs estimated with `torch.utils.flop_counter.FlopCounterMode`. Note that `FlopCounterMode` neglects a range of operations, especially when run on CPU (it neglects attention on CPU in some cases). For this reason, the two FLOPs estimates are not expected to match perfectly.
+
+```bash
+pytest tests/cost_estimate/test_flops.py -s
+```
+
+To reproduce the cost estimates used in the paper, run these commands. They produce `json` files in the same directory that store the information.
+
+```bash
+# energy cost estimate for large taggers (on GPU)
+python cost_estimate/estimate_energy.py
+
+# bitops cost for small taggers (on FPGAs)
+python cost_estimate/estimate_bitops.py
+```

@@ -9,7 +9,7 @@ requires-python = ">=3.10"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["experiments*"]
+include = ["experiments*", "cost_estimate*"]
 exclude = ["tests*"]
 
 [tool.ruff]
