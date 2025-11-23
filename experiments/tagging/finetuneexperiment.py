@@ -33,7 +33,7 @@ class TopTaggingFineTuneExperiment(TopTaggingExperiment):
             self.cfg.finetune.backbone_path, self.cfg.finetune.backbone_cfg
         )
         self.warmstart_cfg = OmegaConf.load(warmstart_path)
-        assert self.warmstart_cfg.exp_type in ["jctagging", "topxltagging"]
+        assert self.warmstart_cfg.exp_type in ["jctagging", "toptagxl"]
         assert self.warmstart_cfg.data.features == "fourmomenta"
 
         if self.warmstart_cfg.model._target_ not in [
@@ -52,8 +52,8 @@ class TopTaggingFineTuneExperiment(TopTaggingExperiment):
 
             # overwrite model-specific cfg.data entries
             # NOTE: might have to extend this if adding more models
-            self.cfg.data.add_tagging_features_framesnet = (
-                self.warmstart_cfg.data.add_tagging_features_framesnet
+            self.cfg.data.tagging_features_framesnet = (
+                self.warmstart_cfg.data.tagging_features_framesnet
             )
             self.cfg.data.beam_reference = self.warmstart_cfg.data.beam_reference
             self.cfg.data.two_beams = self.warmstart_cfg.data.two_beams
