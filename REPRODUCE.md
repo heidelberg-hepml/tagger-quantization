@@ -36,7 +36,7 @@ python run.py -cp config model=tag_top_transformer training=top_transformer use_
 # repeat different quantization levels for each of these
 python run.py -cp config model=tag_lgatr training=top_lgatr
 python run.py -cp config model=tag_lotr training=top_lotr
-python run.py -cp config model=tag_ParT training=top_lotr
+python run.py -cp config model=tag_ParT training=top_ParT
 python run.py -cp config model=tag_top_transformer training=top_transformer model/framesnet=learnedpd
 ```
 
