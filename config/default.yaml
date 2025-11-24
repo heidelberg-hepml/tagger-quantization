@@ -13,6 +13,8 @@ weightquant:
  use: false
  bits: 0
  quantizer: lsbq
+ init_method: kaiming_uniform
+ init_scale: 1.0
 
  prox_map: parq
  start_step: 0

@@ -16,7 +16,7 @@ from torch.cuda.amp import GradScaler
 from torch_ema import ExponentialMovingAverage
 
 import experiments.logger
-from experiments.inputquant import input_quantize
+from experiments.inputquant import init_scaled_model, input_quantize
 from experiments.logger import FORMATTER, LOGGER, MEMORY_HANDLER, RankFilter
 from experiments.misc import flatten_dict, get_device
 from experiments.mlflow import log_mlflow
@@ -126,6 +126,9 @@ class BaseExperiment:
         if self.cfg.inputquant.use:
             modelname = self.cfg.model.net._target_.rsplit(".", 1)[-1]
             input_quantize(self.model, modelname, self.cfg.inputquant)
+
+        if self.cfg.weightquant.use:
+            init_scaled_model(self.model, self.cfg.weightquant)
 
         if self.cfg.ema:
             LOGGER.info("Using EMA for validation and eval")
