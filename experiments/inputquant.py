@@ -3,7 +3,6 @@ from torch import Tensor
 from torch.nn import Linear, init
 
 from experiments.baselines.lorentztransformer import Linear as LorentzLinear
-from experiments.logger import LOGGER
 
 from .parq import get_quantizer
 
@@ -209,36 +208,25 @@ class QuantLorentzLinear(LorentzLinear, QuantLayer):
 
 
 def init_scaled_module(module, scale=1.0):
-    LOGGER.info(f"Initializing module {module.__class__.__name__}")
     for name, child in list(module.named_children()):
         if isinstance(child, (QuantEquiLinear, EquiLinear)):
-            LOGGER.info(f"Initializing EquiLinear with scale factor {scale}")
             child.reset_parameters(initialization="default", gain=scale)
-            LOGGER.info(f"Weight std after scaling: {child.weight.std().item()}")
         elif isinstance(child, (QuantLorentzLinear, LorentzLinear)):
-            LOGGER.info(f"Initializing LorentzLinear with scale factor {scale}")
             child.reset_parameters(initialization="default", additional_factor=scale)
-            LOGGER.info(f"Weight std after scaling: {child.weight_v.std().item()}")
         elif isinstance(child, (QuantLinear, Linear)):
-            LOGGER.info(f"Initializing Linear with scale factor {scale}")
             init.kaiming_uniform_(child.weight)
             child.weight.data = scale * child.weight.data
-            LOGGER.info(f"Weight std after scaling: {child.weight.std().item()}")
         else:
             init_scaled_module(child, scale=scale)
 
 def init_scaled_model(model, cfg_weights):
-    LOGGER.info("Initializing model weights with scaling factor")
     for block in model.net.blocks:
-        LOGGER.info(f"Initializing block {block.__class__.__name__}")
         if cfg_weights.attn:
-            LOGGER.info(f"Initializing attention")
             init_scaled_module(
                 module=block.attention,
                 scale=cfg_weights.init_scale,
             )
         if cfg_weights.mlp:
-            LOGGER.info(f"Initializing MLP")
             init_scaled_module(
                 module=block.mlp,
                 scale=cfg_weights.init_scale,
