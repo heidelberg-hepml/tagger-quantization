@@ -210,17 +210,20 @@ class QuantLorentzLinear(LorentzLinear, QuantLayer):
 
 def init_scaled_module(module, scale=1.0):
     LOGGER.info(f"Initializing module {module.__class__.__name__}")
-    for _, child in module.named_children():
-        if isinstance(module, (QuantEquiLinear, EquiLinear)):
+    for name, child in list(module.named_children()):
+        if isinstance(child, (QuantEquiLinear, EquiLinear)):
             LOGGER.info(f"Initializing EquiLinear with scale factor {scale}")
-            module.reset_parameters(initialization="default", gain=scale)
-        elif isinstance(module, (QuantLorentzLinear, LorentzLinear)):
+            child.reset_parameters(initialization="default", gain=scale)
+            LOGGER.info(f"Weight std after scaling: {child.weight.std().item()}")
+        elif isinstance(child, (QuantLorentzLinear, LorentzLinear)):
             LOGGER.info(f"Initializing LorentzLinear with scale factor {scale}")
-            module.reset_parameters(initialization="default", additional_factor=scale)
-        elif isinstance(module, (QuantLinear, Linear)):
+            child.reset_parameters(initialization="default", additional_factor=scale)
+            LOGGER.info(f"Weight std after scaling: {child.weight_v.std().item()}")
+        elif isinstance(child, (QuantLinear, Linear)):
             LOGGER.info(f"Initializing Linear with scale factor {scale}")
-            init.kaiming_uniform_(module.weight)
-            module.weight *= scale
+            init.kaiming_uniform_(child.weight)
+            child.weight.data = scale * child.weight.data
+            LOGGER.info(f"Weight std after scaling: {child.weight.std().item()}")
         else:
             init_scaled_module(child, scale=scale)
 
