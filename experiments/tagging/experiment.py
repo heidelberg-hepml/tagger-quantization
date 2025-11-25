@@ -220,7 +220,6 @@ class TaggingExperiment(BaseExperiment):
         self.model.eval()
         for batch in loader:
             y_pred, label, _, _ = self._get_ypred_and_label(batch)
-            y_pred = torch.nn.functional.sigmoid(y_pred)
             labels_true.append(label.cpu().float())
             labels_predict.append(y_pred.cpu().float())
         labels_true, labels_predict = torch.cat(labels_true), torch.cat(labels_predict)
@@ -232,9 +231,10 @@ class TaggingExperiment(BaseExperiment):
             )
 
         # bce loss
-        metrics["loss"] = torch.nn.functional.binary_cross_entropy(
+        metrics["loss"] = torch.nn.functional.binary_cross_entropy_with_logits(
             labels_predict, labels_true
         ).item()
+        labels_predict = torch.nn.functional.sigmoid(labels_predict)
         labels_true, labels_predict = labels_true.numpy(), labels_predict.numpy()
 
         # accuracy
