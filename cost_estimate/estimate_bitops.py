@@ -53,11 +53,13 @@ def main(save=True):
 
         results_sub = dict()
         for bits_a, bits_w in BITS:
+            bits_default = bits_a if bits_a > 16 else 16
             bitops = estimate_bitops(
                 arch,
                 arch_kwargs,
                 bits_a=bits_a,
                 bits_w=bits_w,
+                bits_default=bits_default,
                 bits_fp=32,
             )
             flops = estimate_flops(arch, arch_kwargs)

@@ -61,11 +61,13 @@ def main(save=True):
 
         results_sub = dict()
         for dtype_a, dtype_w in DTYPES:
+            dtype_default = dtype_a if dtype_a == "float32" else "float16"
             results_subsub = []
             for mode in ["literature", "A100-estimate", "H100-estimate"]:
                 energy = estimate_energy(
                     arch,
                     arch_kwargs,
+                    dtype_default=dtype_default,
                     dtype_a=dtype_a,
                     dtype_w=dtype_w,
                     dtype_fp="float32",
