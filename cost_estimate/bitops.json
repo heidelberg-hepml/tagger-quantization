@@ -2,41 +2,41 @@
   "transformer": {
     "float32,float32": 170393600,
     "float16,float16": 46284800,
-    "float8,float8": 15257600,
+    "float8,float8": 30617600,
     "float32,ternary": 96665600,
     "float16,ternary": 29081600,
-    "float8,ternary": 11571200
+    "float8,ternary": 26931200
   },
   "particletransformer": {
     "float32,float32": 666828800,
     "float16,float16": 170393600,
-    "float8,float8": 46284800,
+    "float8,float8": 61644800,
     "float32,ternary": 132300800,
     "float16,ternary": 45670400,
-    "float8,ternary": 19558400
+    "float8,ternary": 34918400
   },
   "llocatransformer": {
     "float32,float32": 471699456.0,
     "float16,float16": 138046464.0,
-    "float8,float8": 54633216.0,
+    "float8,float8": 69993216.0,
     "float32,ternary": 165144576.0,
     "float16,ternary": 66516992.0,
-    "float8,ternary": 39305472.0
+    "float8,ternary": 54665472.0
   },
   "lorentztransformer": {
     "float32,float32": 244850688,
     "float16,float16": 73654272,
-    "float8,float8": 30855168,
+    "float8,float8": 53250048,
     "float32,ternary": 150294528,
     "float16,ternary": 51591168,
-    "float8,ternary": 26127360
+    "float8,ternary": 48522240
   },
   "lgatr": {
     "float32,float32": 1751777280,
     "float16,float16": 451878912,
-    "float8,float8": 126904320,
+    "float8,float8": 197572608,
     "float32,ternary": 502640640,
     "float16,ternary": 160413696,
-    "float8,ternary": 64447488
+    "float8,ternary": 135115776
   }
 }

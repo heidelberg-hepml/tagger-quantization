@@ -19,6 +19,7 @@ def transformer_cost(
     channels,
     mlp_ratio=4,
     attn_ratio=1,
+    factor_default=1,
     factor_aw=1,
     factor_aa=1,
     factor_fpfp=1,
@@ -34,7 +35,7 @@ def transformer_cost(
     cost_attn = linear_cost(
         dim_1=seqlen,
         dim_2=seqlen,
-        factor=factor_aa,
+        factor=factor_default,
         factor_bias=0,
     )
     # - factor 2 for A=Q*K and O=A*V
@@ -66,6 +67,7 @@ def llocatransformer_cost(
     channels_framesnet=128,
     layers_framesnet=2,
     hidden_v_fraction=0.5,
+    factor_default=1,
     factor_aw=1,
     factor_aa=1,
     factor_fpfp=1,
@@ -77,6 +79,7 @@ def llocatransformer_cost(
         channels=channels,
         mlp_ratio=mlp_ratio,
         attn_ratio=attn_ratio,
+        factor_default=factor_default,
         factor_aw=factor_aw,
         factor_aa=factor_aa,
         factor_fpfp=factor_fpfp,
@@ -130,6 +133,7 @@ def particletransformer_cost(
     layers_pair=3,
     mlp_ratio=4,
     attn_ratio=1,
+    factor_default=1,
     factor_aw=1,
     factor_aa=1,
     factor_fpfp=1,
@@ -142,6 +146,7 @@ def particletransformer_cost(
         channels=channels,
         mlp_ratio=mlp_ratio,
         attn_ratio=attn_ratio,
+        factor_default=factor_default,
         factor_aw=factor_aw,
         factor_aa=factor_aa,
         factor_fpfp=factor_fpfp,
@@ -184,6 +189,7 @@ def lgatr_cost(
     channels_s,
     mlp_ratio=4,
     attn_ratio=1,
+    factor_default=1,
     factor_aw=1,
     factor_aa=1,
     factor_fpfp=1,
@@ -205,14 +211,14 @@ def lgatr_cost(
 
     # attention
     # - factor 16 from multivector inner product in attention matrix
-    cost_attn_QK = factor_aa * seqlen**2 * (channels_s + 16 * channels_mv)
+    cost_attn_QK = factor_default * seqlen**2 * (channels_s + 16 * channels_mv)
     # - factor 16 from A * mv with scalar A and 16-component mv
-    cost_attn_AV = factor_aa * seqlen**2 * (channels_s + 16 * channels_mv)
+    cost_attn_AV = factor_default * seqlen**2 * (channels_s + 16 * channels_mv)
     cost_attn = cost_attn_QK + cost_attn_AV
 
     # MLP projections
     # - factor 16**2 from 16x16->16 outer product
-    cost_tensorproduct = factor_aa * channels_mv * 16**2
+    cost_tensorproduct = factor_default * channels_mv * 16**2
     cost_leftright = lgatr_linear_cost(
         ch1_mv=channels_mv,
         ch2_mv=channels_mv * mlp_ratio,
@@ -268,6 +274,7 @@ def lorentztransformer_cost(
     channels_s,
     mlp_ratio=4,
     attn_ratio=1,
+    factor_default=1,
     factor_aw=1,
     factor_aa=1,
     factor_fpfp=1,
@@ -289,9 +296,9 @@ def lorentztransformer_cost(
 
     # attention
     # - factor 4 from multivector inner product in attention matrix
-    cost_attn_QK = factor_aa * seqlen**2 * (channels_s + 4 * channels_v) * attn_ratio
+    cost_attn_QK = factor_default * seqlen**2 * (channels_s + 4 * channels_v) * attn_ratio
     # - factor 4 from A * mv with scalar A and 4-component mv
-    cost_attn_AV = factor_aa * seqlen**2 * (channels_s + 4 * channels_v) * attn_ratio
+    cost_attn_AV = factor_default * seqlen**2 * (channels_s + 4 * channels_v) * attn_ratio
     # - factor 3 for square, mean, normalization
     # - factor 3 for normalizing Q, K, V
     cost_attn_norm = 3 * 3 * factor_fpfp * seqlen * (channels_s + 4 * channels_v) * attn_ratio
@@ -360,12 +367,18 @@ def estimate_flops(
 def estimate_bitops(
     architecture: str,
     arch_kwargs,
+    bits_default,
     bits_a,
     bits_w,
     bits_fp,
 ):
     func = get_cost_func(architecture)
-    factors = dict(factor_aw=bits_a * bits_w, factor_aa=bits_a**2, factor_fpfp=bits_fp**2)
+    factors = dict(
+        factor_default=bits_default**2,
+        factor_aw=bits_a * bits_w,
+        factor_aa=bits_a**2,
+        factor_fpfp=bits_fp**2,
+    )
     bitops = func(
         **arch_kwargs,
         **factors,
@@ -376,6 +389,7 @@ def estimate_bitops(
 def estimate_energy(
     architecture: str,
     arch_kwargs,
+    dtype_default="float32",
     dtype_a="float32",
     dtype_w="float32",
     dtype_fp="float32",
@@ -401,6 +415,7 @@ def estimate_energy(
         return get_energy(mul_op=True, dtype=dtype) + get_energy(mul_op=False, dtype=dtype)
 
     func = get_cost_func(architecture)
+    factor_default = get_energy_MAC(dtype=dtype_default)
     factor_aa = get_energy_MAC(dtype=dtype_a)
     factor_fpfp = get_energy_MAC(dtype=dtype_fp)
     if dtype_w == "ternary":
@@ -408,7 +423,12 @@ def estimate_energy(
     else:
         assert dtype_w == dtype_a
         factor_aw = get_energy_MAC(dtype=dtype_a)
-    factors = dict(factor_aw=factor_aw, factor_aa=factor_aa, factor_fpfp=factor_fpfp)
+    factors = dict(
+        factor_default=factor_default,
+        factor_aw=factor_aw,
+        factor_aa=factor_aa,
+        factor_fpfp=factor_fpfp,
+    )
     energy = func(
         **arch_kwargs,
         **factors,
