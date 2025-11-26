@@ -189,3 +189,56 @@ def test_lotr(seqlen, hidden_v_channels, hidden_s_channels, mlp_ratio, attn_rati
         f"flops_est={flops_estimate:.2e} flops_meas={flops_measured:.2e}; ratio={ratio:.0f}%"
     )
     assert abs(ratio) < 10
+
+
+@pytest.mark.parametrize("seqlen", [50])
+@pytest.mark.parametrize(
+    "attn_reps,num_heads,pair_channels",
+    [
+        ("4x0n+1x1n", 2, 4),
+        ("4x0n+1x1n", 8, 4),
+        ("4x0n+1x1n", 32, 4),
+        ("4x0n+1x1n", 64, 4),
+    ],
+)
+@pytest.mark.parametrize("mlp_ratio", [1, 4])
+def test_particletransformer(seqlen, attn_reps, num_heads, pair_channels, mlp_ratio, attn_ratio=1):
+    rep_dim = TensorReps(attn_reps).dim
+    channels = rep_dim * num_heads // attn_ratio
+    arch_kwargs = {
+        "blocks": 2,
+        "seqlen": seqlen,
+        "channels": channels,
+        "mlp_ratio": mlp_ratio,
+        "attn_ratio": attn_ratio,
+        "channels_pair": pair_channels,
+    }
+
+    # create experiment environment
+    with hydra.initialize(config_path="../../config", version_base=None):
+        embed_dims = [channels] + [mlp_ratio * channels] + [channels]
+        pair_embed_dims = 3 * [pair_channels]
+        overrides = [
+            "model=tag_ParT_1k",
+            "save=false",
+            "training.batchsize=1",
+            "data.dataset=mini",
+            "model.net.num_layers=1",
+            "model.net.num_cls_layers=1",
+            f"model.net.attn_reps={attn_reps}",
+            f"model.net.num_heads={num_heads}",
+            f"model.net.pair_embed_dims={pair_embed_dims}",
+            f"model.net.embed_dims={embed_dims}",
+        ]
+        cfg = hydra.compose(config_name="toptagging", overrides=overrides)
+        exp = TopTaggingExperiment(cfg)
+
+    architecture = "particletransformer"
+    flops_estimate, flops_measured = execute(exp, architecture, arch_kwargs, seqlen)
+
+    ratio = (flops_estimate / flops_measured - 1) * 100
+    print(
+        f"channels={channels:>4}; seqlen={seqlen}; attn_ratio={attn_ratio}; mlp_ratio={mlp_ratio}: "
+        f"flops_est={flops_estimate:.2e} flops_meas={flops_measured:.2e}; ratio={ratio:.0f}%"
+    )
+    # assert abs(ratio) < 10

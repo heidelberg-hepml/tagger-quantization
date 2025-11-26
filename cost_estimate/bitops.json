@@ -8,12 +8,12 @@
     "float8,ternary": 11571200
   },
   "particletransformer": {
-    "float32,float32": 666828800,
-    "float16,float16": 170393600,
-    "float8,float8": 46284800,
-    "float32,ternary": 132300800,
-    "float16,ternary": 45670400,
-    "float8,ternary": 19558400
+    "float32,float32": 328908800,
+    "float16,float16": 85913600,
+    "float8,float8": 25164800,
+    "float32,ternary": 139980800,
+    "float16,ternary": 41830400,
+    "float8,ternary": 15718400
   },
   "llocatransformer": {
     "float32,float32": 471699456.0,

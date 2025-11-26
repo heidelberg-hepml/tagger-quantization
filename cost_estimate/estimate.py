@@ -148,9 +148,16 @@ def particletransformer_cost(
     )
 
     # learnable attention bias
-    # - factor 4 for 4 edge features mij, dR2, kT, z
-    cost_pairembed = 4 * seqlen**2 * channels_pair**2 * factor_aw
-    cost_pairembed *= layers_pair
+    # - embed 4 edge features into latent space
+    cost_pairembed_in = linear_cost(
+        dim_1=4, dim_2=channels_pair, factor=factor_aw, factor_bias=factor_aa
+    )
+    cost_pairembed_hidden = linear_cost(
+        dim_1=channels_pair, dim_2=channels_pair, factor=factor_aw, factor_bias=factor_aa
+    )
+    cost_pairembed = cost_pairembed_in + (layers_pair - 1) * cost_pairembed_hidden
+    # - factor seqlen**2 because operating on edge features
+    cost_pairembed *= seqlen**2
 
     cost = cost_transformer + cost_pairembed
     return cost
