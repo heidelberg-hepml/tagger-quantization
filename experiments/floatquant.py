@@ -39,9 +39,9 @@ class FloatQuantizer(Quantizer):
         
         # Mean centering
         if self.center:
-            q, mean = self.remove_mean(p)
+            q, mean = super().remove_mean(p.detach(), dim=dim)
         else:
-            q = p.clone()
+            q = p.detach().clone()
             mean = torch.zeros(1, dtype=p.dtype, device=p.device)
         
         # Compute scale
