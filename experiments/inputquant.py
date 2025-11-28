@@ -1,4 +1,5 @@
 from lgatr.layers import EquiLinear
+import torch
 from torch import Tensor
 from torch.nn import Linear
 
@@ -56,7 +57,7 @@ def input_quantize_ParT(model, cfg_inputs):
 
 def input_quantize_module(module, cfg):
     quant_kwargs = dict(
-        quantizer=cfg.quantizer, bits=cfg.bits, dim=cfg.dim, quantize_output=cfg.quantize_output
+        quantizer=cfg.quantizer, bits=cfg.bits, quant_per_channel=cfg.quant_per_channel, quantize_output=cfg.quantize_output
     )
     for name, child in list(module.named_children()):
         if isinstance(child, Linear):
@@ -98,21 +99,27 @@ class QuantLayer:
         self,
         quantizer: str = "uniform",
         bits: int = 8,
-        dim: int | None = None,
+        quant_per_channel: bool = False,
         quantize_output: bool = False,
     ):
         self.quantizer = get_quantizer(quantizer, bits)
         self.bits = bits
         self.quantize_output = quantize_output
-        self.dim = dim
+        self.dim = 1 if quant_per_channel else None
 
     def ste_quantize(self, input: Tensor) -> Tensor:
         """
         Straight-Through Estimator to quantize activations
         """
-        input_q, _ = self.quantizer.quantize(input, self.bits, self.dim)
+        shape = input.shape
+        if input.dim() > 2:
+            flat = input.view(input.size(0), -1)
+        else:
+            flat = input
+        with torch.no_grad():
+            flat_q, _ = self.quantizer.quantize(flat, self.bits, self.dim)
+        input_q = flat_q.view(shape)
         return input + (input_q - input).detach()
-
 
 class QuantLinear(Linear, QuantLayer):
     def __init__(
@@ -120,7 +127,7 @@ class QuantLinear(Linear, QuantLayer):
         *args,
         quantizer: str = "uniform",
         bits: int = 8,
-        dim: int | None = None,
+        quant_per_channel: bool = False,
         quantize_output: bool = True,
         **kwargs,
     ):
@@ -129,7 +136,7 @@ class QuantLinear(Linear, QuantLayer):
             self,
             quantizer=quantizer,
             bits=bits,
-            dim=dim,
+            quant_per_channel=quant_per_channel,
             quantize_output=quantize_output,
         )
 
@@ -147,19 +154,19 @@ class QuantEquiLinear(EquiLinear, QuantLayer):
         *args,
         quantizer: str = "uniform",
         bits: int = 8,
-        dim: int | None = None,
+        quant_per_channel: bool = False,
         quantize_output: bool = True,
         **kwargs,
     ):
         EquiLinear.__init__(self, *args, **kwargs)
-        assert dim is None, (
+        assert quant_per_channel == False, (
             "Quantization scale should be shared across channels to preserve equivariance"
         )
         QuantLayer.__init__(
             self,
             quantizer=quantizer,
             bits=bits,
-            dim=dim,
+            quant_per_channel=quant_per_channel,
             quantize_output=quantize_output,
         )
 
@@ -184,7 +191,7 @@ class QuantLorentzLinear(LorentzLinear, QuantLayer):
         *args,
         quantizer: str = "uniform",
         bits: int = 8,
-        dim: int | None = None,
+        quant_per_channel: bool = False,
         quantize_output: bool = True,
         **kwargs,
     ):
@@ -193,7 +200,7 @@ class QuantLorentzLinear(LorentzLinear, QuantLayer):
             self,
             quantizer=quantizer,
             bits=bits,
-            dim=dim,
+            quant_per_channel=quant_per_channel,
             quantize_output=quantize_output,
         )
 

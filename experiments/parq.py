@@ -13,8 +13,9 @@ from parq.quant import (
 )
 from parq.quant.uniform import AsymUnifQuantizer
 
-from experiments.floatquant import FloatQuantizer, TorchFloatQuantizer
+from experiments.floatquant import FloatQuantizer
 from experiments.logger import LOGGER
+from experiments.piquarq import ProxPiQuaRQ
 
 
 def get_quantizer(name, bits):
@@ -29,14 +30,9 @@ def get_quantizer(name, bits):
         return AsymUnifQuantizer()
     elif name == "maxuniform":
         return MaxUnifQuantizer()
-    elif "float" in name:  # e.g. floate5m2 or Float-E4M3
-        em = name.split("e")[-1]
-        e, m = em.split("m")
-        assert int(e) + int(m) + 1 == bits, "Bits do not match exponent and mantissa"
-        if "torch" in name:
-            return TorchFloatQuantizer(int(e), int(m))
-        else:
-            return FloatQuantizer(int(e), int(m))
+    elif name == "float":
+        assert bits in [4, 8], "Float quantizer only supports 4 or 8 bits"
+        return FloatQuantizer(bits)
     else:
         raise ValueError(f"Unknown quantizer {name}")
 
@@ -49,6 +45,11 @@ def init_parq_optimizer(base_optimizer, cfg):
 
     if cfg.weightquant.prox_map == "parq":
         prox_map = ProxPARQ(start_step, end_step, steepness=cfg.weightquant.steepness)
+    elif cfg.weightquant.prox_map == "piquarq":
+        prox_map = ProxPiQuaRQ(
+            start_step,
+            end_step,
+        )
     elif cfg.weightquant.prox_map == "soft":
         prox_map = ProxSoftQuant(start_step, end_step)
     elif cfg.weightquant.prox_map == "hard":
