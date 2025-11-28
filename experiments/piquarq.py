@@ -1,44 +1,43 @@
 import math
 
 import torch
-from torch import Tensor
-
-from parq.optim.proxmap import ProxMap
 from parq.optim.parq import amp_custom_fwd, channel_bucketize
+from parq.optim.proxmap import ProxMap
+from torch import Tensor
 
 
 def compute_beta_exponential(
     t: int, t1: int, t2: int, beta_start: float = 1e-3, beta_end: float = 0.5
 ) -> float:
     """Compute beta using exponential schedule beta^(T) = 2^(alpha(T - T_0)).
-    
+
     Maps iteration t in [t1, t2) to beta values using exponential growth.
     At t1, beta = beta_start (weak regularization).
     At t2, beta = beta_end (>= 0.5 for hard rounding).
-    
+
     Args:
         t: Current iteration (should be in range [t1, t2))
         t1: Start of annealing window
         t2: End of annealing window (where beta reaches beta_end)
         beta_start: Initial beta value at t1
         beta_end: Beta value at t2
-    
+
     Returns:
         beta: Regularization strength at iteration t
     """
     assert t >= t1 and t < t2, "Beta schedule: ensure t1 <= t < t2"
-    
+
     # Map t to T in range [1, t2 - t1]
     T = t - t1 + 1
     T_max = t2 - t1
-    
+
     alpha = (math.log2(beta_end) - math.log2(beta_start)) / (T_max - 1)
-    
+
     T0 = 1 - math.log2(beta_start) / alpha
-    
+
     # Compute beta for current T
     beta = 2.0 ** (alpha * (T - T0))
-    
+
     return beta
 
 
@@ -67,17 +66,17 @@ class ProxPiQuaRQ(ProxMap):
         dim: int | None = None,
     ) -> float:
         """Prox-map based on piecewise quadratic regularization with gradual annealing.
-        
+
         The parameter beta = tau * lambda represents the effective regularization strength.
         - beta = 0: identity function (no regularization)
         - 0 < beta < 0.5: soft rounding near integers, soft thresholding outside [-M, M]
         - beta = 0.5: hard rounding, hard thresholding
-        
+
         Annealing: beta follows exponential schedule beta^(T) = 2^(α(T - T₀))
         - At anneal_start (t1): beta = beta_start (weak regularization, typically ~1e-3)
         - At anneal_end (t2): beta = beta_end (transition to hard rounding, typically 0.5)
         - After anneal_end: beta stays at beta_end or continues growing
-        
+
         Args:
             p: Parameter tensor to quantize
             q: Previous quantized values
@@ -141,7 +140,7 @@ class ProxPiQuaRQ(ProxMap):
             s = torch.sign(p)
             u = torch.abs(p)
             u_m = torch.floor(u)
-            
+
             # Extract M from Q (max value in quantization grid)
             if dim is None:
                 # Q is 1-D: M is the maximum value
@@ -153,16 +152,16 @@ class ProxPiQuaRQ(ProxMap):
                 M_shape = [1] * p.ndim
                 M_shape[dim] = -1
                 M = M.view(*M_shape)
-            
+
             mask_M = u < M
-            
+
             # Case 1: u < M
             # clip((t - beta / 2) / (1 - beta), 0, 1) + u_m, where t = u - u_m
             t_case1 = u - u_m
             denom = 1 - beta
             ratio = (t_case1 - beta / 2) / denom
             case1 = torch.clamp(ratio, 0, 1) + u_m
-            
+
             # Case 2 : u >= M
             # relu((1 - beta) * t - beta / 2) + M, where t = u - M
             t_case2 = u - M
@@ -174,13 +173,13 @@ class ProxPiQuaRQ(ProxMap):
                 # denom = 1 + beta
                 # ratio = (t_case2 - beta / 2) / denom
                 # case2 = torch.relu(ratio) + M
-            
+
             q_abs = torch.where(mask_M, case1, case2)
-            
+
             # Apply sign
             q_new = s * q_abs
-            
+
             # In-place update of model parameters
             p.copy_(q_new)
-        
+
         return 1 - beta

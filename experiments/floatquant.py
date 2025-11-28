@@ -1,11 +1,11 @@
 import torch
-from torch import Tensor
 from parq.quant import Quantizer
+from torch import Tensor
 
 
 class FloatQuantizer(Quantizer):
     """Float quantizer for E4M3FN (8-bit) and E2M1FN (4-bit)."""
-    
+
     def __init__(self, bits: int = 8, center: bool = False):
         """
         Args:
@@ -13,7 +13,7 @@ class FloatQuantizer(Quantizer):
             center: subtract mean before quantization
         """
         super().__init__(center=center)
-        
+
         if bits == 8:
             self.e, self.m = 4, 3
             self.max_val = 448.0  # E4M3FN max (no inf, has NaN at exp=15)
@@ -24,36 +24,36 @@ class FloatQuantizer(Quantizer):
             self.use_native = False
         else:
             raise ValueError(f"Unsupported bits={bits}. Use 4 or 8.")
-        
+
         self.bits = bits
         self.codebook = self._build_codebook()
-    
+
     def get_quant_size(self, b: int) -> int:
         """Return number of quantization values (excluding NaN)."""
         assert b == self.bits
         return len(self.codebook)
-    
+
     def quantize(self, p: Tensor, b: int, dim: int | None = None) -> tuple[Tensor, Tensor]:
         """Quantize tensor to float format."""
         assert b == self.bits
-        
+
         # Mean centering
         if self.center:
             q, mean = super().remove_mean(p.detach(), dim=dim)
         else:
             q = p.detach().clone()
             mean = torch.zeros(1, dtype=p.dtype, device=p.device)
-        
+
         # Compute scale
         if dim is None:
             absmax = q.abs().max()
         else:
             absmax = q.abs().amax(dim=dim, keepdim=True)
         scale = torch.where(absmax > 0, absmax / self.max_val, torch.ones_like(absmax))
-        
+
         # Scale codebook
         Q = self.codebook.to(dtype=p.dtype, device=p.device) * scale
-        
+
         # Quantize
         if self.use_native:
             # Float8: use native dtype
@@ -63,24 +63,24 @@ class FloatQuantizer(Quantizer):
             bin_edges = (Q[:-1] + Q[1:]) / 2.0
             indices = torch.bucketize(q.flatten(), bin_edges, right=True)
             q = Q[indices].view_as(p)
-        
+
         # Add mean back
         if self.center:
             q = q + mean
             Q = Q + mean
-        
+
         return q, Q
-    
+
     def _build_codebook(self) -> Tensor:
         """Build codebook for E4M3FN or E2M1FN format."""
         bias = (1 << (self.e - 1)) - 1
         mant_scale = 1 << self.m
-        
+
         vals = []
-        
+
         # Iterate through all exponent codes
-        max_exp_code = (1 << self.e)
-        
+        max_exp_code = 1 << self.e
+
         for exp_code in range(max_exp_code):
             if exp_code == 0:
                 # Subnormals: exp_code=0
@@ -93,15 +93,15 @@ class FloatQuantizer(Quantizer):
                 max_mant = mant_scale
                 if self.bits == 8 and exp_code == 15:
                     max_mant = mant_scale - 1  # Exclude last mantissa (NaN)
-                
+
                 for m in range(max_mant):
                     val = (1.0 + m / mant_scale) * (2.0 ** (exp_code - bias))
                     vals.append(val)
-        
+
         positives = [v for v in vals if v > 0]
         negatives = [-v for v in reversed(positives)]
-        
+
         # Add signed zeros to respect float representation
         full = negatives + [-0.0, 0.0] + positives
-        
+
         return torch.tensor(full, dtype=torch.float32)
