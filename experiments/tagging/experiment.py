@@ -234,6 +234,18 @@ class TaggingExperiment(BaseExperiment):
         metrics["loss"] = torch.nn.functional.binary_cross_entropy_with_logits(
             labels_predict, labels_true
         ).item()
+        if not torch.isfinite(labels_predict).all():
+            mask = torch.isfinite(labels_predict)
+            LOGGER.warning(
+                f"Non-finite values ({(~mask).sum().item()}) in labels_predict detected during evaluation"
+            )
+            if mode == "eval":
+                # only loss is required
+                return metrics
+            else:
+                # set non-finite predictions to zero and continue
+                labels_predict[~mask] = 0.0
+        labels_predict = labels_predict.clamp(min=-20, max=20)  # avoid overflow
         labels_predict = torch.nn.functional.sigmoid(labels_predict)
         labels_true, labels_predict = labels_true.numpy(), labels_predict.numpy()
 
