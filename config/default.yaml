@@ -17,7 +17,7 @@ weightquant:
  prox_map: parq
  start_step: 0
  final_hard_steps: 0
- steepness: 100
+ steepness: 75
 
  inout: false
  attn: true
@@ -26,7 +26,7 @@ weightquant:
 
  warmup_steps: 0
  quant_period: 10
- quant_per_channel: false
+ quant_per_channel: true
  quant_shrink: false
  anneal_wd_frac: 0.0
  nm_gamma: 0.0
