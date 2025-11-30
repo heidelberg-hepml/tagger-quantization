@@ -67,6 +67,7 @@ def llocatransformer_cost(
     channels_framesnet=128,
     layers_framesnet=2,
     hidden_v_fraction=0.5,
+    is_global=False,
     factor_default=1,
     factor_aw=1,
     factor_aa=1,
@@ -85,13 +86,16 @@ def llocatransformer_cost(
         factor_fpfp=factor_fpfp,
     )
 
-    # frame-to-frame transformations
-    # - factor 4 for f2f_QKV (3) and f2f_output (1)
-    n_vectors = 4 * channels * hidden_v_fraction // 4
-    # - factor 4**2 for 4x4 matrix multiplication
-    cost_frame2frame = blocks * seqlen * n_vectors * factor_fpfp * 4**2
+    if not is_global:
+        # frame-to-frame transformations
+        # - factor 4 for f2f_QKV (3) and f2f_output (1)
+        n_vectors = 4 * channels * hidden_v_fraction // 4
+        # - factor 4**2 for 4x4 matrix multiplication
+        cost_frame2frame = blocks * seqlen * n_vectors * factor_fpfp * 4**2
+    else:
+        cost_frame2frame = 0
 
-    # estimate this based on FLOPs (uses bits_fp)
+    # framesnet cost
     num_edges = (seqlen + 3) * (seqlen + 2)  # because of spurions
     cost_framesnet_in = linear_cost(
         dim_1=15,
@@ -119,7 +123,10 @@ def llocatransformer_cost(
     empirical_operations_per_frame = (
         300  # estimated using https://github.com/SamirMoustafa/torch-operation-counter
     )
-    cost_orthonormalization = seqlen * empirical_operations_per_frame * factor_fpfp
+    cost_orthonormalization = empirical_operations_per_frame * factor_fpfp
+    if not is_global:
+        # need a different frame for each particle
+        cost_orthonormalization *= seqlen
 
     cost = cost_transformer + cost_frame2frame + cost_framesnet + cost_orthonormalization
     return cost

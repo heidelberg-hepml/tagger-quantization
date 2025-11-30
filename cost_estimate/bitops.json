@@ -23,6 +23,14 @@
     "float16,ternary": 66516992.0,
     "float8,ternary": 54665472.0
   },
+  "llocatransformer-global": {
+    "float32,float32": 450093056,
+    "float16,float16": 116440064,
+    "float8,float8": 48386816,
+    "float32,ternary": 143538176,
+    "float16,ternary": 44910592,
+    "float8,ternary": 33059072
+  },
   "lorentztransformer": {
     "float32,float32": 244850688,
     "float16,float16": 73654272,
