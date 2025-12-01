@@ -50,7 +50,7 @@ def get_xformers_attention_mask(batch, materialize=False, dtype=torch.float32):
         or torch.nn.functional.scaled_dot_product_attention
     """
     bincounts = torch.bincount(batch).tolist()
-    mask = BlockDiagonalMask.from_seqlens(bincounts, device=batch.device)
+    mask = BlockDiagonalMask.from_seqlens(bincounts)
     if materialize:
         # materialize mask to torch.tensor (only for testing purposes)
         mask = mask.materialize(shape=(len(batch), len(batch))).to(batch.device, dtype=dtype)
