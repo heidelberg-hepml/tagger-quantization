@@ -3,7 +3,14 @@ import json
 from cost_estimate.estimate import estimate_bitops, estimate_flops
 
 SEQLEN = 50
-ARCHS = ["transformer", "particletransformer", "llocatransformer", "lorentztransformer", "lgatr"]
+ARCHS = [
+    "transformer",
+    "particletransformer",
+    "llocatransformer",
+    "llocatransformer-global",
+    "lorentztransformer",
+    "lgatr",
+]
 BITS = [
     (32, 32),
     (16, 16),
@@ -23,32 +30,45 @@ MAP = {
 
 def get_arch_kwargs(arch):
     if arch == "transformer":
-        return dict(blocks=1, channels=16, mlp_ratio=1, attn_ratio=1)
+        return "transformer", dict(blocks=1, channels=16, mlp_ratio=1, attn_ratio=1)
     elif arch == "particletransformer":
-        return dict(blocks=2, channels=8, channels_pair=4, layers_pair=3, mlp_ratio=4, attn_ratio=1)
+        return "particletransformer", dict(
+            blocks=2, channels=8, channels_pair=4, layers_pair=3, mlp_ratio=4, attn_ratio=1
+        )
     elif arch == "llocatransformer":
-        return dict(
+        return "llocatransformer", dict(
             blocks=1,
             channels=16,
             mlp_ratio=1,
             attn_ratio=1,
             channels_framesnet=4,
             layers_framesnet=2,
+            is_global=False,
+        )
+    elif arch == "llocatransformer-global":
+        return "llocatransformer", dict(
+            blocks=1,
+            channels=16,
+            mlp_ratio=1,
+            attn_ratio=1,
+            channels_framesnet=4,
+            layers_framesnet=2,
+            is_global=True,
         )
     elif arch == "lorentztransformer":
-        return dict(blocks=1, channels_v=1, channels_s=16, mlp_ratio=1, attn_ratio=1)
-    elif arch == "lorentztransformer":
-        return dict(blocks=1, channels_v=1, channels_s=16, mlp_ratio=1, attn_ratio=1)
+        return "lorentztransformer", dict(
+            blocks=1, channels_v=1, channels_s=16, mlp_ratio=1, attn_ratio=1
+        )
     elif arch == "lgatr":
-        return dict(blocks=1, channels_mv=3, channels_s=8, mlp_ratio=1, attn_ratio=1)
+        return "lgatr", dict(blocks=1, channels_mv=3, channels_s=8, mlp_ratio=1, attn_ratio=1)
     else:
         raise ValueError(f"Unknown architecture: {arch}")
 
 
 def main(save=True):
     results = dict()
-    for arch in ARCHS:
-        arch_kwargs = get_arch_kwargs(arch)
+    for archname in ARCHS:
+        arch, arch_kwargs = get_arch_kwargs(archname)
         arch_kwargs["seqlen"] = SEQLEN
 
         results_sub = dict()
@@ -64,10 +84,10 @@ def main(save=True):
             )
             flops = estimate_flops(arch, arch_kwargs)
             print(
-                f"{arch:<20} bits_a={bits_a:>2} bits_w={bits_w:>2}: bitops={bitops:.1e}, flops={flops:.1e}"
+                f"{archname:<20} bits_a={bits_a:>2} bits_w={bits_w:>2}: bitops={bitops:.1e}, flops={flops:.1e}"
             )
             results_sub[f"{MAP[bits_a]},{MAP[bits_w]}"] = bitops
-        results[arch] = results_sub
+        results[archname] = results_sub
 
     if save:
         with open("cost_estimate/bitops.json", "w") as file:
