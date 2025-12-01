@@ -17,7 +17,7 @@ weightquant:
  prox_map: parq
  start_step: 0
  final_hard_steps: 0
- steepness: 75
+ steepness: 100
 
  inout: false
  attn: true
