@@ -727,6 +727,9 @@ class BaseExperiment:
         ]:
             self.scheduler.step()
 
+        if not torch.isfinite(loss):
+            LOGGER.warning(f"Loss is nonfinite (loss={loss}) at iteration {step}")
+
         # collect metrics
         if self.world_size > 1:
             dist.all_reduce(loss, op=dist.ReduceOp.SUM)
