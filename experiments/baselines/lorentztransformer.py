@@ -82,37 +82,6 @@ class RMSNorm(nn.Module):
         return vectors_out, scalars_out
 
 
-class GatedLinearUnit(nn.Module):
-    def __init__(
-        self,
-        in_v_channels: int,
-        out_v_channels: int,
-        in_s_channels: int,
-        out_s_channels: int,
-        nonlinearity: str = "gelu",
-        mix_linear: bool = False,
-    ):
-        super().__init__()
-        self.linear = Linear(
-            in_v_channels=in_v_channels,
-            out_v_channels=3 * out_v_channels,
-            in_s_channels=in_s_channels,
-            out_s_channels=2 * out_s_channels,
-            mix_linear=mix_linear,
-        )
-        self.nonlinearity = get_nonlinearity(nonlinearity)
-
-    def forward(self, vectors, scalars):
-        v_full, s_full = self.linear(vectors, scalars)
-        v_pre, v_gates_1, v_gates_2 = v_full.chunk(3, dim=-2)
-        s_pre, s_gates = s_full.chunk(2, dim=-1)
-
-        v_gates = inner_product(v_gates_1, v_gates_2).unsqueeze(-1)
-        vectors_out = self.nonlinearity(v_gates) * v_pre
-        scalars_out = self.nonlinearity(s_gates) * s_pre
-        return vectors_out, scalars_out
-
-
 class Linear(nn.Module):
     def __init__(
         self,
@@ -203,6 +172,37 @@ class Linear(nn.Module):
         nn.init.uniform_(self.linear_s.weight, a=-bound, b=bound)
 
 
+
+class GatedLinearUnit(nn.Module):
+    def __init__(
+        self,
+        in_v_channels: int,
+        out_v_channels: int,
+        in_s_channels: int,
+        out_s_channels: int,
+        nonlinearity: str = "gelu",
+        mix_linear: bool = False,
+    ):
+        super().__init__()
+        self.linear = Linear(
+            in_v_channels=in_v_channels,
+            out_v_channels=3 * out_v_channels,
+            in_s_channels=in_s_channels,
+            out_s_channels=2 * out_s_channels,
+            mix_linear=mix_linear,
+        )
+        self.nonlinearity = get_nonlinearity(nonlinearity)
+
+    def forward(self, vectors, scalars):
+        v_full, s_full = self.linear(vectors, scalars)
+        v_pre, v_gates_1, v_gates_2 = v_full.chunk(3, dim=-2)
+        s_pre, s_gates = s_full.chunk(2, dim=-1)
+
+        v_gates = inner_product(v_gates_1, v_gates_2).unsqueeze(-1)
+        vectors_out = self.nonlinearity(v_gates) * v_pre
+        scalars_out = self.nonlinearity(s_gates) * s_pre
+        return vectors_out, scalars_out
+
 class Attention(nn.Module):
     def __init__(
         self,
@@ -255,7 +255,7 @@ class Attention(nn.Module):
             .movedim(-1, -3)
         )
 
-        # normalize for stability
+        # normalize for stability (important)
         qkv_v, qkv_s = self.norm(qkv_v, qkv_s)
 
         q_v, k_v, v_v = qkv_v.unbind(0)
