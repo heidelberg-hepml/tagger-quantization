@@ -245,7 +245,6 @@ class TaggingExperiment(BaseExperiment):
             else:
                 # set non-finite predictions to zero and continue
                 labels_predict[~mask] = 0.0
-        labels_predict = labels_predict.clamp(min=-20, max=20)  # avoid overflow
         labels_predict = torch.nn.functional.sigmoid(labels_predict)
         labels_true, labels_predict = labels_true.numpy(), labels_predict.numpy()
 
