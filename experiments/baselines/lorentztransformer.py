@@ -90,6 +90,7 @@ class GatedLinearUnit(nn.Module):
         in_s_channels: int,
         out_s_channels: int,
         nonlinearity: str = "gelu",
+        mix_linear: bool = False,
     ):
         super().__init__()
         self.linear = Linear(
@@ -97,6 +98,7 @@ class GatedLinearUnit(nn.Module):
             out_v_channels=3 * out_v_channels,
             in_s_channels=in_s_channels,
             out_s_channels=2 * out_s_channels,
+            mix_linear=mix_linear,
         )
         self.nonlinearity = get_nonlinearity(nonlinearity)
 
@@ -120,6 +122,7 @@ class Linear(nn.Module):
         out_s_channels: int,
         bias: bool = True,
         initialization: str = "default",
+        mix_linear: bool = False,
     ):
         super().__init__()
         self._in_v_channels = in_v_channels
@@ -127,6 +130,11 @@ class Linear(nn.Module):
         self._in_s_channels = in_s_channels
         self._out_s_channels = out_s_channels
         self._bias = bias
+        self._mix_linear = mix_linear
+
+        if mix_linear:
+            self._n_vv2s = int(min(out_v_channels // 2, out_s_channels // 2))
+            self._n_sv2v = int(min(out_s_channels, out_v_channels // 2))
 
         self.weight_v = nn.Parameter(
             torch.empty(
@@ -143,7 +151,38 @@ class Linear(nn.Module):
     def forward(self, vectors, scalars):
         vectors_out = self.weight_v @ vectors
         scalars_out = self.linear_s(scalars)
+
+        if self._mix_linear:
+            vectors_out, scalars_out = self.mix_linear(vectors_out, scalars_out)
         return vectors_out, scalars_out
+
+    def mix_linear(self, vectors, scalars):
+        # vector * vector -> scalar
+        if self._n_vv2s > 0:
+            # take vectors from the start and modify scalars from the end
+            v_left = vectors[..., : self._n_vv2s, :]
+            v_right = vectors[..., self._n_vv2s : 2 * self._n_vv2s, :]
+            s_from_v = inner_product(v_left, v_right)
+            scalars = torch.cat(
+                [
+                    scalars[..., :-self._n_vv2s],
+                    scalars[..., -self._n_vv2s :] + s_from_v,
+                ],
+                dim=-1,
+            )
+
+        # scalar * vector -> vector
+        if self._n_sv2v > 0:
+            # take scalars from the end and modify vectors from the start
+            s_sv2v = scalars[..., -self._n_sv2v:]
+            vectors = torch.cat(
+                [
+                    vectors[..., :self._n_sv2v, :] + s_sv2v.unsqueeze(-1),
+                    vectors[..., self._n_sv2v:, :],
+                ],
+                dim=-2,
+            )
+        return vectors, scalars
 
     def reset_parameters(self, initialization, additional_factor=1.0):
         if initialization == "default":
@@ -171,6 +210,7 @@ class Attention(nn.Module):
         s_channels: int,
         num_heads: int,
         attn_ratio: int = 1,
+        mix_linear: bool = False,
         dropout_prob: float | None = None,
     ):
         super().__init__()
@@ -187,6 +227,7 @@ class Attention(nn.Module):
             in_s_channels=s_channels,
             out_s_channels=3 * self.hidden_s_channels * self.num_heads,
             initialization="small",
+            mix_linear=mix_linear,
         )
         self.linear_out = Linear(
             in_v_channels=self.hidden_v_channels * self.num_heads,
@@ -194,6 +235,7 @@ class Attention(nn.Module):
             in_s_channels=self.hidden_s_channels * self.num_heads,
             out_s_channels=s_channels,
             initialization="small",
+            mix_linear=mix_linear,
         )
         self.norm = RMSNorm()
         if dropout_prob is not None:
@@ -257,6 +299,7 @@ class MLP(nn.Module):
         nonlinearity: str = "gelu",
         mlp_ratio: int = 2,
         num_layers: int = 1,
+        mix_linear: bool = False,
         dropout_prob: float | None = None,
     ):
         super().__init__()
@@ -273,6 +316,7 @@ class MLP(nn.Module):
                     in_s_channels=s_channels_list[i],
                     out_s_channels=s_channels_list[i + 1],
                     nonlinearity=nonlinearity,
+                    mix_linear=mix_linear,
                 )
             )
             if dropout_prob is not None:
@@ -283,6 +327,7 @@ class MLP(nn.Module):
                 out_v_channels=v_channels_list[-1],
                 in_s_channels=s_channels_list[-2],
                 out_s_channels=s_channels_list[-1],
+                mix_linear=mix_linear,
             )
         )
 
@@ -307,6 +352,7 @@ class LorentzTransformerBlock(nn.Module):
         mlp_ratio: int = 2,
         attn_ratio: int = 1,
         num_layers_mlp: int = 1,
+        mix_linear: bool = False,
         dropout_prob: float | None = None,
     ):
         super().__init__()
@@ -318,6 +364,7 @@ class LorentzTransformerBlock(nn.Module):
             s_channels=s_channels,
             num_heads=num_heads,
             attn_ratio=attn_ratio,
+            mix_linear=mix_linear,
             dropout_prob=dropout_prob,
         )
 
@@ -327,6 +374,7 @@ class LorentzTransformerBlock(nn.Module):
             nonlinearity=nonlinearity,
             mlp_ratio=mlp_ratio,
             num_layers=num_layers_mlp,
+            mix_linear=mix_linear,
             dropout_prob=dropout_prob,
         )
 
@@ -367,6 +415,7 @@ class LorentzTransformer(nn.Module):
         mlp_ratio: int = 2,
         attn_ratio: int = 1,
         num_layers_mlp: int = 1,
+        mix_linear: bool = False,
         dropout_prob: float | None = None,
         checkpoint_blocks: bool = False,
         compile: bool = False,
@@ -378,6 +427,7 @@ class LorentzTransformer(nn.Module):
             in_s_channels=in_s_channels,
             out_v_channels=hidden_v_channels,
             out_s_channels=hidden_s_channels,
+            mix_linear=mix_linear,
         )
 
         self.blocks = nn.ModuleList(
@@ -390,6 +440,7 @@ class LorentzTransformer(nn.Module):
                     mlp_ratio=mlp_ratio,
                     attn_ratio=attn_ratio,
                     num_layers_mlp=num_layers_mlp,
+                    mix_linear=mix_linear,
                     dropout_prob=dropout_prob,
                 )
                 for _ in range(num_blocks)
@@ -401,6 +452,7 @@ class LorentzTransformer(nn.Module):
             in_s_channels=hidden_s_channels,
             out_v_channels=out_v_channels,
             out_s_channels=out_s_channels,
+            mix_linear=mix_linear,
         )
         self._checkpoint_blocks = checkpoint_blocks
 
