@@ -216,7 +216,7 @@ class Linear(nn.Module):
             s_sv2v = scalars[..., -self._n_sv2v:]
             vectors = torch.cat(
                 [
-                    vectors[..., :self._n_sv2v, :] + s_sv2v.unsqueeze(-1),
+                    vectors[..., :self._n_sv2v, :] * s_sv2v.unsqueeze(-1),
                     vectors[..., self._n_sv2v:, :],
                 ],
                 dim=-2,

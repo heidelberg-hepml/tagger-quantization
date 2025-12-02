@@ -184,7 +184,7 @@ def test_Attention_equivariance(
 
 @pytest.mark.parametrize("batch_dims", BATCH_DIMS)
 @pytest.mark.parametrize("v_channels,s_channels", [(32, 4), (16, 8)])
-@pytest.mark.parametrize("mlp_ratio,num_layers", [(1, 1), (2, 1), (1, 2)])
+@pytest.mark.parametrize("mlp_ratio,num_layers", [(1, 2), (2, 2), (1, 3)])
 def test_MLP_equivariance(batch_dims, v_channels, s_channels, mlp_ratio, num_layers):
     layer = MLP(
         v_channels=v_channels,
