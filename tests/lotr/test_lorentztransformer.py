@@ -21,6 +21,9 @@ CHANNELS = [
     (1, 4, 0, 2),
     (9, 3, 4, 0),
     (2, 7, 0, 0),
+    (0, 1, 2, 3),
+    (3, 0, 2, 3),
+    (0, 0, 2, 3),
 ]
 
 
@@ -87,6 +90,7 @@ def test_GatedLinearUnit_equivariance(
 
 @pytest.mark.parametrize("batch_dims", BATCH_DIMS)
 @pytest.mark.parametrize("in_v_channels,out_v_channels,in_s_channels,out_s_channels", CHANNELS)
+@pytest.mark.parametrize("mix_linear", [True, False])
 @pytest.mark.parametrize("initialization", ["default", "small"])
 def test_Linear_equivariance(
     batch_dims,
@@ -94,6 +98,7 @@ def test_Linear_equivariance(
     out_v_channels,
     in_s_channels,
     out_s_channels,
+    mix_linear,
     initialization,
 ):
     layer = Linear(
@@ -102,6 +107,7 @@ def test_Linear_equivariance(
         in_s_channels=in_s_channels,
         out_s_channels=out_s_channels,
         initialization=initialization,
+        mix_linear=mix_linear,
     )
     s = torch.randn(*batch_dims, in_s_channels)
     v = torch.randn(*batch_dims, in_v_channels, 4)
@@ -115,7 +121,7 @@ def test_Linear_equivariance(
 
 
 @pytest.mark.parametrize("batch_dims", [(100,)])
-@pytest.mark.parametrize("in_v_channels,out_v_channels,in_s_channels,out_s_channels", CHANNELS)
+@pytest.mark.parametrize("in_v_channels,out_v_channels,in_s_channels,out_s_channels", CHANNELS[:4])
 def test_Linear_initialization(
     batch_dims,
     in_v_channels,

@@ -233,7 +233,7 @@ class Linear(nn.Module):
         else:
             raise ValueError(f"Unknown initialization: {initialization}")
 
-        fan_in = self._in_v_channels
+        fan_in = max(self._in_v_channels, 1)
         bound = v_factor / math.sqrt(fan_in)
         nn.init.uniform_(self.weight_v, a=-bound, b=bound)
 
