@@ -161,6 +161,7 @@ class Linear(nn.Module):
         if mix_linear:
             self._n_vv2s = int(min(out_v_channels // 2, out_s_channels // 2))
             self._n_sv2v = int(min(out_s_channels, out_v_channels // 2))
+            self.inner_product_scale = nn.Parameter(torch.randn(self._n_vv2s).exp())
 
         self.weight_v = nn.Parameter(
             torch.empty(
@@ -201,7 +202,7 @@ class Linear(nn.Module):
             # take vectors from the start and modify scalars from the end
             v_left = vectors[..., : self._n_vv2s, :]
             v_right = vectors[..., self._n_vv2s : 2 * self._n_vv2s, :]
-            s_from_v = inner_product(v_left, v_right)
+            s_from_v = inner_product(v_left, v_right) * self.inner_product_scale
             scalars = torch.cat(
                 [
                     scalars[..., :-self._n_vv2s],
