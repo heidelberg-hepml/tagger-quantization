@@ -1,3 +1,4 @@
+from lloca.equivectors import LGATrVectors, MLPVectors, PELICANVectors
 from parq.optim import (
     ProxBinaryRelax,
     ProxHardQuant,
@@ -97,6 +98,25 @@ def init_parq_param_groups(model, cfg, modelname, param_groups=None):
     return param_groups
 
 
+def init_param_groups_framesnet(framesnet):
+    if isinstance(framesnet.equivectors, MLPVectors):
+        params_framesnet = []
+        params_framesnet_inout = []
+        layers = framesnet.equivectors.block.mlp.mlp
+        for i, layer in enumerate(layers):
+            if i == 0 or i == len(layers) - 1:
+                params_framesnet_inout += list(layer.parameters())
+            else:
+                params_framesnet += list(layer.parameters())
+    elif isinstance(framesnet.equivectors, PELICANVectors):
+        raise NotImplementedError("PELICANVectors not supported in PARQ yet")
+    elif isinstance(framesnet.equivectors, LGATrVectors):
+        raise NotImplementedError("LGATrVectors not supported in PARQ yet")
+    else:
+        raise ValueError("Unknown equivectors type in framesnet")
+    return params_framesnet, params_framesnet_inout
+
+
 def init_param_groups_transformer(model, cfg):
     # collect parameters in groups
     params_inout = list(model.net.linear_in.parameters()) + list(model.net.linear_out.parameters())
@@ -107,9 +127,15 @@ def init_param_groups_transformer(model, cfg):
         params_mlp += list(block.mlp.parameters())
 
     params_noq = []
-    params_framesnet = list(model.framesnet.parameters())
+    params_framesnet, params_framesnet_inout = init_param_groups_framesnet(model.framesnet)
     return param_groups_transformer_helper(
-        params_framesnet, params_inout, params_attn, params_mlp, params_noq, cfg
+        params_framesnet,
+        params_framesnet_inout,
+        params_inout,
+        params_attn,
+        params_mlp,
+        params_noq,
+        cfg,
     )
 
 
@@ -146,40 +172,43 @@ def init_param_groups_ParticleTransformer(model, cfg):
             + list(block.post_fc_norm.parameters())
         )
 
-    params_framesnet = list(model.framesnet.parameters())
+    params_framesnet, params_framesnet_inout = init_param_groups_framesnet(model.framesnet)
     return param_groups_transformer_helper(
-        params_framesnet, params_inout, params_attn, params_mlp, params_noq, cfg
+        params_framesnet,
+        params_framesnet_inout,
+        params_inout,
+        params_attn,
+        params_mlp,
+        params_noq,
+        cfg,
     )
 
 
 def param_groups_transformer_helper(
-    params_framesnet, params_inout, params_attn, params_mlp, params_noq, cfg
+    params_framesnet, params_framesnet_inout, params_inout, params_attn, params_mlp, params_noq, cfg
 ):
     def is_bias(param):
         return param.ndim == 1
 
-    def include_params(in_list, out_q_wd, out_noq):
-        out_q_wd += [p for p in in_list if not is_bias(p)]
-        out_noq += [p for p in in_list if is_bias(p)]
+    def sort_bias(in_list, out_nobias, out_bias):
+        out_nobias += [p for p in in_list if not is_bias(p)]
+        out_bias += [p for p in in_list if is_bias(p)]
 
     # divide backbone parameters
     params_q_wd = []
     params_noq_wd = []
     if cfg.weightquant.inout:
-        include_params(params_inout, params_q_wd, params_noq)
+        sort_bias(params_inout, params_q_wd, params_noq)
     else:
-        params_noq_wd += [p for p in params_inout if not is_bias(p)]
-        params_noq += [p for p in params_inout if is_bias(p)]
+        sort_bias(params_inout, params_noq_wd, params_noq)
     if cfg.weightquant.attn:
-        include_params(params_attn, params_q_wd, params_noq)
+        sort_bias(params_attn, params_q_wd, params_noq)
     else:
-        params_noq_wd += [p for p in params_attn if not is_bias(p)]
-        params_noq += [p for p in params_attn if is_bias(p)]
+        sort_bias(params_attn, params_noq_wd, params_noq)
     if cfg.weightquant.mlp:
-        include_params(params_mlp, params_q_wd, params_noq)
+        sort_bias(params_mlp, params_q_wd, params_noq)
     else:
-        params_noq_wd += [p for p in params_mlp if not is_bias(p)]
-        params_noq += [p for p in params_mlp if is_bias(p)]
+        sort_bias(params_mlp, params_noq_wd, params_noq)
 
     param_groups = [
         {
@@ -201,12 +230,16 @@ def param_groups_transformer_helper(
 
     framesnet_params_q_wd = []
     framesnet_params_noq_wd = []
-    framesnet_params_noq = [p for p in params_framesnet if is_bias(p)]
-    weights = [p for p in params_framesnet if not is_bias(p)]
+    framesnet_params_noq = []
     if cfg.weightquant.framesnet:
-        framesnet_params_q_wd += weights
+        if cfg.weightquant.inout:
+            sort_bias(params_framesnet_inout, framesnet_params_q_wd, framesnet_params_noq)
+        else:
+            sort_bias(params_framesnet_inout, framesnet_params_noq_wd, framesnet_params_noq)
+        sort_bias(params_framesnet, framesnet_params_q_wd, framesnet_params_noq)
     else:
-        framesnet_params_noq_wd += weights
+        sort_bias(params_framesnet_inout, framesnet_params_noq_wd, framesnet_params_noq)
+        sort_bias(params_framesnet, framesnet_params_noq_wd, framesnet_params_noq)
 
     param_groups += [
         {
