@@ -1,4 +1,5 @@
 from lgatr.layers import EquiLinear
+from lloca import MLPVectors
 from torch import Tensor
 from torch.nn import Linear
 
@@ -30,11 +31,16 @@ def input_quantize_transformer(model, cfg_inputs):
                 cfg=cfg_inputs,
             )
     if cfg_inputs.framesnet:
-        framesnet_inner_layers = model.framesnet.equivectors.block.mlp.mlp[1:-1]
-        input_quantize_module(
-            module=framesnet_inner_layers,
-            cfg=cfg_inputs,
-        )
+        if isinstance(model.framesnet.equivectors, MLPVectors):
+            framesnet_inner_layers = model.framesnet.equivectors.block.mlp.mlp[1:-1]
+            input_quantize_module(
+                module=framesnet_inner_layers,
+                cfg=cfg_inputs,
+            )
+        else:
+            raise NotImplementedError(
+                "Input quantization for framesnet only implemented for MLPVectors"
+            )
 
 
 def input_quantize_ParT(model, cfg_inputs):

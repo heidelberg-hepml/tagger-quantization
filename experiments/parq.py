@@ -1,4 +1,4 @@
-from lloca.equivectors import LGATrVectors, MLPVectors, PELICANVectors
+from lloca.equivectors import MLPVectors
 from parq.optim import (
     ProxBinaryRelax,
     ProxHardQuant,
@@ -108,12 +108,10 @@ def init_param_groups_framesnet(framesnet):
                 params_framesnet_inout += list(layer.parameters())
             else:
                 params_framesnet += list(layer.parameters())
-    elif isinstance(framesnet.equivectors, PELICANVectors):
-        raise NotImplementedError("PELICANVectors not supported in PARQ yet")
-    elif isinstance(framesnet.equivectors, LGATrVectors):
-        raise NotImplementedError("LGATrVectors not supported in PARQ yet")
     else:
-        raise ValueError("Unknown equivectors type in framesnet")
+        raise NotImplementedError(
+            "Weight quantization for framesnet only implemented for MLPVectors"
+        )
     return params_framesnet, params_framesnet_inout
 
 
