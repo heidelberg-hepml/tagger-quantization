@@ -31,7 +31,7 @@ def get_quantizer(name, bits):
     elif name == "maxuniform":
         return MaxUnifQuantizer()
     elif name == "float":
-        assert bits in [4, 8], "Float quantizer only supports 4 or 8 bits"
+        assert bits in [4, 6, 8], "Float quantizer only supports 4, 6 or 8 bits"
         return FloatQuantizer(bits)
     else:
         raise ValueError(f"Unknown quantizer {name}")

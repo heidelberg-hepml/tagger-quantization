@@ -4,12 +4,12 @@ from torch import Tensor
 
 
 class FloatQuantizer(Quantizer):
-    """Float quantizer for E4M3FN (8-bit) and E2M1FN (4-bit)."""
+    """Float quantizer for E4M3FN (8-bit), E3M2FN (6-bit) and E2M1FN (4-bit)."""
 
     def __init__(self, bits: int = 8, center: bool = False):
         """
         Args:
-            bits: 4 or 8 bits
+            bits: 4, 6 or 8 bits
             center: subtract mean before quantization
         """
         super().__init__(center=center)
@@ -18,12 +18,16 @@ class FloatQuantizer(Quantizer):
             self.e, self.m = 4, 3
             self.max_val = 448.0  # E4M3FN max (no inf, has NaN at exp=15)
             self.use_native = True
+        elif bits == 6:
+            self.e, self.m = 3, 2
+            self.max_val = 28.0  # E3M2FN max (no inf, no NaN)
+            self.use_native = False
         elif bits == 4:
             self.e, self.m = 2, 1
             self.max_val = 6.0  # E2M1FN max (no inf, no NaN)
             self.use_native = False
         else:
-            raise ValueError(f"Unsupported bits={bits}. Use 4 or 8.")
+            raise ValueError(f"Unsupported bits={bits}. Use 4, 6 or 8.")
 
         self.bits = bits
         self.codebook = self._build_codebook()
@@ -72,7 +76,7 @@ class FloatQuantizer(Quantizer):
         return q, Q
 
     def _build_codebook(self) -> Tensor:
-        """Build codebook for E4M3FN or E2M1FN format."""
+        """Build codebook of representable float values."""
         bias = (1 << (self.e - 1)) - 1
         mant_scale = 1 << self.m
 
@@ -91,7 +95,7 @@ class FloatQuantizer(Quantizer):
                 # Normals: exp_code >= 1
                 # For E4M3FN: exp=15 only has mantissa 0-6 (mantissa=7 is NaN)
                 max_mant = mant_scale
-                if self.bits == 8 and exp_code == 15:
+                if self.bits == 8 and exp_code == max_exp_code - 1:
                     max_mant = mant_scale - 1  # Exclude last mantissa (NaN)
 
                 for m in range(max_mant):
