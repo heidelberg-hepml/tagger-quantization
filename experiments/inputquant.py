@@ -1,9 +1,7 @@
-import math
-
 import torch
 from lgatr.layers import EquiLinear
 from torch import Tensor
-from torch.nn import Linear, Parameter, init
+from torch.nn import Linear
 
 from experiments.baselines.lorentztransformer import Linear as LorentzLinear
 
@@ -108,27 +106,11 @@ class QuantLayer:
         bits: int = 8,
         quant_per_channel: bool = False,
         quantize_output: bool = False,
-        input_layer_dim: int | None = None,
-        output_layer_dim: int | None = None,
     ):
         self.quantizer = get_quantizer(quantizer, bits)
         self.bits = bits
         self.quantize_output = quantize_output
         self.dim = 1 if quant_per_channel else None
-        if input_layer_dim is not None:
-            self.input_weight = Parameter(torch.empty(1, input_layer_dim))
-            # Initialize scaling activations
-            # TODO: adapt to quantization scheme
-            init.kaiming_uniform_(self.input_weight, a=math.sqrt(5))
-        else:
-            self.input_weight = None
-        if output_layer_dim is not None:
-            self.output_weight = Parameter(torch.empty(1, output_layer_dim))
-            # Initialize scaling weights
-            # TODO: adapt to quantization scheme
-            init.kaiming_uniform_(self.output_weight, a=math.sqrt(5))
-        else:
-            self.output_weight = None
 
     def ste_quantize(self, input: Tensor) -> Tensor:
         """
@@ -145,30 +127,6 @@ class QuantLayer:
         output = input + (input_q - input).detach()
         return output
 
-    def scale_input(self, input: Tensor) -> Tensor:
-        """
-        Scale the input tensor by a learnable parameter if input_layer_dim is not None.
-        This is equivalent to rescaling the activations of the network after quantization.
-        """
-        if self.input_weight is None:
-            return input
-        else:
-            view_shape = (1,) * (input.dim() - 2) + self.input_weight.shape
-            scale = self.input_weight.view(view_shape)
-            return input * scale
-        
-    def scale_output(self, output: Tensor) -> Tensor:
-        """
-        Scale the output tensor by a learnable parameter if output_layer_dim is not None.
-        This is equivalent to rescaling the weights of the network.
-        """
-        if self.output_weight is None:
-            return output
-        else:
-            view_shape = (1,) * (output.dim() - 2) + self.output_weight.shape
-            scale = self.output_weight.view(view_shape)
-            return output * scale
-
 
 class QuantLinear(Linear, QuantLayer):
     def __init__(
@@ -178,8 +136,6 @@ class QuantLinear(Linear, QuantLayer):
         bits: int = 8,
         quant_per_channel: bool = False,
         quantize_output: bool = True,
-        scale_input: bool = False,
-        scale_output: bool = False,
         **kwargs,
     ):
         Linear.__init__(self, *args, **kwargs)
@@ -189,17 +145,11 @@ class QuantLinear(Linear, QuantLayer):
             bits=bits,
             quant_per_channel=quant_per_channel,
             quantize_output=quantize_output,
-            input_layer_dim=self.in_features if scale_input else None,
-            output_layer_dim=self.out_features if scale_output else None,
         )
 
     def forward(self, input: Tensor) -> Tensor:
         input = QuantLayer.ste_quantize(self, input)
-        if self.scale_input:
-            input = QuantLayer.scale_input(self, input)
         output = Linear.forward(self, input)
-        if self.scale_output:
-            output = QuantLayer.scale_output(self, output)
         if self.quantize_output:
             output = QuantLayer.ste_quantize(self, output)
         return output
@@ -227,22 +177,13 @@ class QuantEquiLinear(EquiLinear, QuantLayer):
             bits=bits,
             quant_per_channel=quant_per_channel,
             quantize_output=quantize_output,
-            input_layer_dim=1 if scale_input else None,  # shared scaling for equivariance
-            output_layer_dim=1 if scale_output else None,
         )
 
     def forward(self, multivectors: Tensor, scalars: Tensor | None) -> tuple[Tensor, Tensor | None]:
         multivectors = QuantLayer.ste_quantize(self, multivectors)
-        if self.scale_input:
-            multivectors = QuantLayer.scale_input(self, multivectors)
         if scalars is not None:
             scalars = QuantLayer.ste_quantize(self, scalars)
-            scalars = QuantLayer.scale_input(self, scalars)
         output_mv, output_s = EquiLinear.forward(self, multivectors, scalars)
-        if self.scale_output:
-            output_mv = QuantLayer.scale_output(self, output_mv)
-            if output_s is not None:
-                output_s = QuantLayer.scale_output(self, output_s)
         if self.quantize_output:
             output_mv = QuantLayer.ste_quantize(self, output_mv)
             if output_s is not None:
@@ -269,20 +210,12 @@ class QuantLorentzLinear(LorentzLinear, QuantLayer):
             bits=bits,
             quant_per_channel=quant_per_channel,
             quantize_output=quantize_output,
-            input_layer_dim=1 if scale_input else None,  # shared scaling for equivariance
-            output_layer_dim=1 if scale_output else None,
         )
 
     def forward(self, vectors: Tensor, scalars: Tensor) -> tuple[Tensor, Tensor]:
         vectors = QuantLayer.ste_quantize(self, vectors)
         scalars = QuantLayer.ste_quantize(self, scalars)
-        if self.scale_input:
-            vectors = QuantLayer.scale_input(self, vectors)
-            scalars = QuantLayer.scale_input(self, scalars)
         vectors_out, scalars_out = LorentzLinear.forward(self, vectors, scalars)
-        if self.scale_output:
-            vectors_out = QuantLayer.scale_output(self, vectors_out)
-            scalars_out = QuantLayer.scale_output(self, scalars_out)
         if self.quantize_output:
             vectors_out = QuantLayer.ste_quantize(self, vectors_out)
             scalars_out = QuantLayer.ste_quantize(self, scalars_out)
