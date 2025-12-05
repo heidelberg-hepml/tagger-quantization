@@ -151,11 +151,13 @@ def init_param_groups_ParticleTransformer(model, cfg):
     params_noq = [model.net.cls_token] + list(model.net.norm.parameters())
 
     # carefully seperate inout (inputs/outputs need high precision) and mlp
+
     for i, m in enumerate(model.net.embed.embed):
         if i <= 3:
             params_inout += list(m.parameters())
         else:
             params_mlp += list(m.parameters())
+    params_inout += list(model.net.embed.input_bn.parameters())
     params_inout += list(model.net.pair_embed.parameters())
     params_inout += list(model.net.fc.parameters())
 
