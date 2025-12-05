@@ -11,11 +11,11 @@ net:
  _partial_: true
 
  in_channels: null
- attn_reps: "8x0n+2x1n" # reps can be varied, but number of channels should stay fixed
+ attn_reps: "4x0n+2x1n" # reps can be varied, but number of channels should stay fixed
  out_channels: null
 
  num_blocks: 2
- num_heads: 2
+ num_heads: 4
  mlp_factor: 1
  dropout_prob: null
  checkpoint_blocks: false

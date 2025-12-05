@@ -1,0 +1,16 @@
+_target_: lloca.equivectors.mlp.MLPVectors
+_partial_: true
+
+n_vectors: null
+num_scalars: null
+hidden_channels: 16
+num_layers_mlp: 2
+dropout_prob: null
+use_amp: false
+
+include_edges: true
+operation: add
+nonlinearity: softmax
+aggr: sum
+layer_norm: true
+fm_norm: true
