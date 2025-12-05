@@ -180,7 +180,12 @@ def init_param_groups_ParticleTransformer(model, cfg):
             + list(block.post_fc_norm.parameters())
         )
 
-    params_framesnet, params_framesnet_inout = init_param_groups_framesnet(model.framesnet)
+    if isinstance(model.framesnet, LearnedFrames):
+        params_framesnet, params_framesnet_inout = init_param_groups_framesnet(model.framesnet)
+    else:
+        params_framesnet = []
+        params_framesnet_inout = []
+
     return param_groups_transformer_helper(
         params_framesnet,
         params_framesnet_inout,
