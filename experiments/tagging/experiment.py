@@ -9,6 +9,7 @@ from torch_geometric.loader import DataLoader
 from experiments.base_experiment import BaseExperiment
 from experiments.logger import LOGGER
 from experiments.mlflow import log_mlflow
+from experiments.parq import compute_ternary_entropy
 from experiments.tagging.dataset import TopTaggingDataset
 from experiments.tagging.embedding import embed_tagging_data, get_num_tagging_features
 from experiments.tagging.plots import plot_mixer
@@ -190,6 +191,15 @@ class TaggingExperiment(BaseExperiment):
             "test": self.test_loader,
             "val": self.val_loader,
         }
+        if self.cfg.weightquant.use and self.cfg.weightquant.bits == 0:
+            modelname = self.cfg.model.net._target_.rsplit(".", 1)[-1]
+            entropy = compute_ternary_entropy(self.model, self.cfg, modelname)
+            LOGGER.info(f"Ternary entropy of the model weights: {entropy['entropy']:.4f} bits")
+            LOGGER.info(
+                f"Positive fraction: {entropy['prob_pos']:.4f}, "
+                f"Negative fraction: {entropy['prob_neg']:.4f}, "
+                f"Zero fraction: {entropy['prob_zero']:.4f}"
+            )
         for set_label in self.cfg.evaluation.eval_set:
             if self.ema is not None:
                 with self.ema.average_parameters():

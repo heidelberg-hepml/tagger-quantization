@@ -1,3 +1,4 @@
+import torch
 from lloca.equivectors import MLPVectors
 from lloca.framesnet.equi_frames import LearnedFrames
 from parq.optim import (
@@ -274,3 +275,28 @@ def param_groups_transformer_helper(
     ]
 
     return param_groups
+
+
+def compute_ternary_entropy(model, cfg, modelname):
+    param_groups = init_parq_param_groups(model, cfg, modelname)
+    num_params = 0
+    num_pos_params = 0
+    num_neg_params = 0
+    num_zero_params = 0
+    for group in param_groups:
+        if "quant_bits" in group:
+            assert group["quant_bits"] == 0
+            for p in group["params"]:
+                p_data = p.cpu()
+                num_params += p_data.numel()
+                num_pos_params += (p_data > 0).sum().item()
+                num_neg_params += (p_data < 0).sum().item()
+                num_zero_params += (p_data == 0).sum().item()
+    prob_pos = num_pos_params / num_params
+    prob_neg = num_neg_params / num_params
+    prob_zero = num_zero_params / num_params
+    entropy = 0.0
+    for p in [prob_pos, prob_neg, prob_zero]:
+        if p > 0:
+            entropy -= p * torch.log2(torch.tensor(p)).item()
+    return {"entropy": entropy, "prob_pos": prob_pos, "prob_neg": prob_neg, "prob_zero": prob_zero}

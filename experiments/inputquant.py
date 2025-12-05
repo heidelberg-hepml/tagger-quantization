@@ -297,3 +297,35 @@ class QuantLorentzLinear(LorentzLinear, QuantLayer):
             vectors_out = QuantLayer.ste_quantize(self, vectors_out)
             scalars_out = QuantLayer.ste_quantize(self, scalars_out)
         return vectors_out, scalars_out
+
+
+def init_scaled_module(module, scale=1.0):
+    for child in list(module.children()):
+        if isinstance(child, (QuantEquiLinear, EquiLinear)):
+            child.reset_parameters(initialization="default", gain=scale)
+        elif isinstance(child, (QuantLorentzLinear, LorentzLinear)):
+            child.reset_parameters(initialization="default", additional_factor=scale)
+        elif isinstance(child, (QuantLinear, Linear)):
+            init.kaiming_uniform_(child.weight)
+            child.weight.data = scale * child.weight.data
+        else:
+            init_scaled_module(child, scale=scale)
+
+
+def init_scaled_model(model, cfg_weights):
+    for block in model.net.blocks:
+        if cfg_weights.attn:
+            init_scaled_module(
+                module=block.attention,
+                scale=cfg_weights.init_scale,
+            )
+        if cfg_weights.mlp:
+            init_scaled_module(
+                module=block.mlp,
+                scale=cfg_weights.init_scale,
+            )
+    if cfg_weights.framesnet:
+        init_scaled_module(
+            module=model.framesnet,
+            scale=cfg_weights.init_scale,
+        )
