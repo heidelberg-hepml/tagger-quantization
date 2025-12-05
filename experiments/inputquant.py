@@ -61,8 +61,6 @@ def input_quantize_module(module, cfg):
         bits=cfg.bits,
         quant_per_channel=cfg.quant_per_channel,
         quantize_output=cfg.quantize_output,
-        scale_input=cfg.scale_input,
-        scale_output=cfg.scale_output,
     )
     for name, child in list(module.named_children()):
         if isinstance(child, Linear):
@@ -163,8 +161,6 @@ class QuantEquiLinear(EquiLinear, QuantLayer):
         bits: int = 8,
         quant_per_channel: bool = False,
         quantize_output: bool = True,
-        scale_input: bool = False,
-        scale_output: bool = False,
         **kwargs,
     ):
         EquiLinear.__init__(self, *args, **kwargs)
@@ -199,8 +195,6 @@ class QuantLorentzLinear(LorentzLinear, QuantLayer):
         bits: int = 8,
         quant_per_channel: bool = False,
         quantize_output: bool = True,
-        scale_input: bool = False,
-        scale_output: bool = False,
         **kwargs,
     ):
         LorentzLinear.__init__(self, *args, **kwargs)

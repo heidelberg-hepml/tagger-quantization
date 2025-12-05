@@ -15,7 +15,6 @@ from parq.quant.uniform import AsymUnifQuantizer
 
 from experiments.floatquant import FloatQuantizer
 from experiments.logger import LOGGER
-from experiments.piquarq import ProxPiQuaRQ
 
 
 def get_quantizer(name, bits):
@@ -45,11 +44,6 @@ def init_parq_optimizer(base_optimizer, cfg):
 
     if cfg.weightquant.prox_map == "parq":
         prox_map = ProxPARQ(start_step, end_step, steepness=cfg.weightquant.steepness)
-    elif cfg.weightquant.prox_map == "piquarq":
-        prox_map = ProxPiQuaRQ(
-            start_step,
-            end_step,
-        )
     elif cfg.weightquant.prox_map == "soft":
         prox_map = ProxSoftQuant(start_step, end_step)
     elif cfg.weightquant.prox_map == "hard":
