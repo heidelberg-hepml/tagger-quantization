@@ -1,3 +1,4 @@
+import torch
 from lgatr.layers import EquiLinear
 from torch import Tensor
 from torch.nn import Linear
@@ -56,7 +57,10 @@ def input_quantize_ParT(model, cfg_inputs):
 
 def input_quantize_module(module, cfg):
     quant_kwargs = dict(
-        quantizer=cfg.quantizer, bits=cfg.bits, dim=cfg.dim, quantize_output=cfg.quantize_output
+        quantizer=cfg.quantizer,
+        bits=cfg.bits,
+        quant_per_channel=cfg.quant_per_channel,
+        quantize_output=cfg.quantize_output,
     )
     for name, child in list(module.named_children()):
         if isinstance(child, Linear):
@@ -98,20 +102,28 @@ class QuantLayer:
         self,
         quantizer: str = "uniform",
         bits: int = 8,
-        dim: int | None = None,
+        quant_per_channel: bool = False,
         quantize_output: bool = False,
     ):
         self.quantizer = get_quantizer(quantizer, bits)
         self.bits = bits
         self.quantize_output = quantize_output
-        self.dim = dim
+        self.dim = 1 if quant_per_channel else None
 
     def ste_quantize(self, input: Tensor) -> Tensor:
         """
         Straight-Through Estimator to quantize activations
         """
-        input_q, _ = self.quantizer.quantize(input, self.bits, self.dim)
-        return input + (input_q - input).detach()
+        shape = input.shape
+        if input.dim() > 2:
+            flat = input.view(input.size(0), -1)
+        else:
+            flat = input
+        with torch.no_grad():
+            flat_q, _ = self.quantizer.quantize(flat, self.bits, self.dim)
+        input_q = flat_q.view(shape)
+        output = input + (input_q - input).detach()
+        return output
 
 
 class QuantLinear(Linear, QuantLayer):
@@ -120,7 +132,7 @@ class QuantLinear(Linear, QuantLayer):
         *args,
         quantizer: str = "uniform",
         bits: int = 8,
-        dim: int | None = None,
+        quant_per_channel: bool = False,
         quantize_output: bool = True,
         **kwargs,
     ):
@@ -129,12 +141,12 @@ class QuantLinear(Linear, QuantLayer):
             self,
             quantizer=quantizer,
             bits=bits,
-            dim=dim,
+            quant_per_channel=quant_per_channel,
             quantize_output=quantize_output,
         )
 
     def forward(self, input: Tensor) -> Tensor:
-        input = self.ste_quantize(input)
+        input = QuantLayer.ste_quantize(self, input)
         output = Linear.forward(self, input)
         if self.quantize_output:
             output = QuantLayer.ste_quantize(self, output)
@@ -147,19 +159,19 @@ class QuantEquiLinear(EquiLinear, QuantLayer):
         *args,
         quantizer: str = "uniform",
         bits: int = 8,
-        dim: int | None = None,
+        quant_per_channel: bool = False,
         quantize_output: bool = True,
         **kwargs,
     ):
         EquiLinear.__init__(self, *args, **kwargs)
-        assert dim is None, (
+        assert not quant_per_channel, (
             "Quantization scale should be shared across channels to preserve equivariance"
         )
         QuantLayer.__init__(
             self,
             quantizer=quantizer,
             bits=bits,
-            dim=dim,
+            quant_per_channel=quant_per_channel,
             quantize_output=quantize_output,
         )
 
@@ -167,15 +179,12 @@ class QuantEquiLinear(EquiLinear, QuantLayer):
         multivectors = QuantLayer.ste_quantize(self, multivectors)
         if scalars is not None:
             scalars = QuantLayer.ste_quantize(self, scalars)
-        output = EquiLinear.forward(self, multivectors, scalars)
+        output_mv, output_s = EquiLinear.forward(self, multivectors, scalars)
         if self.quantize_output:
-            output_mv, output_s = output
             output_mv = QuantLayer.ste_quantize(self, output_mv)
             if output_s is not None:
                 output_s = QuantLayer.ste_quantize(self, output_s)
-            return output_mv, output_s
-        else:
-            return output
+        return output_mv, output_s
 
 
 class QuantLorentzLinear(LorentzLinear, QuantLayer):
@@ -184,7 +193,7 @@ class QuantLorentzLinear(LorentzLinear, QuantLayer):
         *args,
         quantizer: str = "uniform",
         bits: int = 8,
-        dim: int | None = None,
+        quant_per_channel: bool = False,
         quantize_output: bool = True,
         **kwargs,
     ):
@@ -193,13 +202,13 @@ class QuantLorentzLinear(LorentzLinear, QuantLayer):
             self,
             quantizer=quantizer,
             bits=bits,
-            dim=dim,
+            quant_per_channel=quant_per_channel,
             quantize_output=quantize_output,
         )
 
-    def forward(self, vectors: Tensor, scalars: Tensor) -> Tensor:
-        vectors = self.ste_quantize(vectors)
-        scalars = self.ste_quantize(scalars)
+    def forward(self, vectors: Tensor, scalars: Tensor) -> tuple[Tensor, Tensor]:
+        vectors = QuantLayer.ste_quantize(self, vectors)
+        scalars = QuantLayer.ste_quantize(self, scalars)
         vectors_out, scalars_out = LorentzLinear.forward(self, vectors, scalars)
         if self.quantize_output:
             vectors_out = QuantLayer.ste_quantize(self, vectors_out)

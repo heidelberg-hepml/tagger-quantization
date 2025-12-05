@@ -13,7 +13,7 @@ from parq.quant import (
 )
 from parq.quant.uniform import AsymUnifQuantizer
 
-from experiments.floatquant import FloatQuantizer, TorchFloatQuantizer
+from experiments.floatquant import FloatQuantizer
 from experiments.logger import LOGGER
 
 
@@ -29,14 +29,9 @@ def get_quantizer(name, bits):
         return AsymUnifQuantizer()
     elif name == "maxuniform":
         return MaxUnifQuantizer()
-    elif "float" in name:  # e.g. floate5m2 or Float-E4M3
-        em = name.split("e")[-1]
-        e, m = em.split("m")
-        assert int(e) + int(m) + 1 == bits, "Bits do not match exponent and mantissa"
-        if "torch" in name:
-            return TorchFloatQuantizer(int(e), int(m))
-        else:
-            return FloatQuantizer(int(e), int(m))
+    elif name == "float":
+        assert bits in [4, 6, 8], "Float quantizer only supports 4, 6 or 8 bits"
+        return FloatQuantizer(bits)
     else:
         raise ValueError(f"Unknown quantizer {name}")
 
