@@ -2,6 +2,8 @@ import math
 
 import torch
 from lgatr.layers import EquiLinear
+from lloca.equivectors import MLPVectors
+from lloca.framesnet.equi_frames import LearnedFrames
 from torch import Tensor
 from torch.nn import Linear, Parameter, init
 
@@ -32,11 +34,18 @@ def input_quantize_transformer(model, cfg_inputs):
                 module=block.mlp,
                 cfg=cfg_inputs,
             )
-    if cfg_inputs.framesnet:
-        input_quantize_module(
-            module=model.framesnet,
-            cfg=cfg_inputs,
-        )
+    if cfg_inputs.framesnet and isinstance(model.framesnet, LearnedFrames):
+        if isinstance(model.framesnet.equivectors, MLPVectors):
+            framesnet_inner_layers = model.framesnet.equivectors.block.mlp.mlp[1:-1]
+            input_quantize_module(
+                module=framesnet_inner_layers,
+                cfg=cfg_inputs,
+            )
+        else:
+            # TODO: implement for other equivectors
+            raise NotImplementedError(
+                "Input quantization for framesnet currently only implemented for MLPVectors"
+            )
 
 
 def input_quantize_ParT(model, cfg_inputs):
@@ -156,7 +165,7 @@ class QuantLayer:
             view_shape = (1,) * (input.dim() - 2) + self.input_weight.shape
             scale = self.input_weight.view(view_shape)
             return input * scale
-        
+
     def scale_output(self, output: Tensor) -> Tensor:
         """
         Scale the output tensor by a learnable parameter if output_layer_dim is not None.
@@ -247,6 +256,7 @@ class QuantEquiLinear(EquiLinear, QuantLayer):
             output_mv = QuantLayer.ste_quantize(self, output_mv)
             if output_s is not None:
                 output_s = QuantLayer.ste_quantize(self, output_s)
+        return output_mv, output_s
         return output_mv, output_s
 
 

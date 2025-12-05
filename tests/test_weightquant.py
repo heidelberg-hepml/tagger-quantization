@@ -6,6 +6,15 @@ from experiments.tagging.experiment import TopTaggingExperiment
 
 
 @pytest.mark.parametrize(
+    "model_list",
+    [
+        ["model=tag_transformer"],
+        ["model=tag_ParT"],
+        ["model=tag_lgatr"],
+        ["model=tag_lotr"],
+    ],
+)
+@pytest.mark.parametrize(
     "framesnet",
     [
         "identity",
@@ -13,15 +22,16 @@ from experiments.tagging.experiment import TopTaggingExperiment
     ],
 )
 @pytest.mark.parametrize(
-    "model_list",
+    "use,inout,q_fnet",
     [
-        ["model=tag_ParT"],
-        ["model=tag_transformer"],
-        ["model=tag_lgatr"],
-        ["model=tag_lotr"],
+        (False, None, None),
+        (True, False, False),
+        (True, True, False),
+        (True, False, True),
+        (True, True, True),
     ],
 )
-def test_weightquant_consistency(framesnet, model_list):
+def test_weightquant_consistency(framesnet, model_list, use, inout, q_fnet):
     experiments.logger.LOGGER.disabled = True  # turn off logging
 
     # create experiment environment
@@ -29,6 +39,9 @@ def test_weightquant_consistency(framesnet, model_list):
         overrides = [
             *model_list,
             f"model/framesnet={framesnet}",
+            f"weightquant.use={use}",
+            f"weightquant.inout={inout}",
+            f"weightquant.framesnet={q_fnet}",
             "save=false",
         ]
         cfg = hydra.compose(config_name="toptagging", overrides=overrides)

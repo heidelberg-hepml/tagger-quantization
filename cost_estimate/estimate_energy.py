@@ -75,11 +75,11 @@ def main(save=True):
                 )
                 results_subsub.append(energy)
             print(
-                f"{arch:<20} dtype_a={dtype_a:<10} dtype_w={dtype_w:<10}: {results_subsub[0]:.1e} (lit) {results_subsub[1]:.1e} (A100 est) {results_subsub[2]:.1e} (H100 est)"
+                f"{archname:<20} dtype_a={dtype_a:<10} dtype_w={dtype_w:<10}: {results_subsub[0]:.1e} (lit) {results_subsub[1]:.1e} (A100 est) {results_subsub[2]:.1e} (H100 est)"
             )
 
             results_sub[f"{dtype_a},{dtype_w}"] = results_subsub
-        results[arch] = results_sub
+        results[archname] = results_sub
 
     if save:
         with open("cost_estimate/energy.json", "w") as file:
