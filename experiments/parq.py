@@ -1,4 +1,5 @@
 from lloca.equivectors import MLPVectors
+from lloca.framesnet.equi_frames import LearnedFrames
 from parq.optim import (
     ProxBinaryRelax,
     ProxHardQuant,
@@ -126,7 +127,13 @@ def init_param_groups_transformer(model, cfg):
         params_mlp += list(block.mlp.parameters())
 
     params_noq = []
-    params_framesnet, params_framesnet_inout = init_param_groups_framesnet(model.framesnet)
+
+    if isinstance(model.framesnet, LearnedFrames):
+        params_framesnet, params_framesnet_inout = init_param_groups_framesnet(model.framesnet)
+    else:
+        params_framesnet = []
+        params_framesnet_inout = []
+
     return param_groups_transformer_helper(
         params_framesnet,
         params_framesnet_inout,
