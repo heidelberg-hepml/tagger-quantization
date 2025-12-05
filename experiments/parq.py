@@ -109,8 +109,9 @@ def init_param_groups_framesnet(framesnet):
             else:
                 params_framesnet += list(layer.parameters())
     else:
+        # TODO: implement for other equivectors
         raise NotImplementedError(
-            "Weight quantization for framesnet only implemented for MLPVectors"
+            "Weight quantization for framesnet currently only implemented for MLPVectors"
         )
     return params_framesnet, params_framesnet_inout
 
