@@ -102,10 +102,7 @@ class FloatQuantizer(Quantizer):
                     val = (1.0 + m / mant_scale) * (2.0 ** (exp_code - bias))
                     vals.append(val)
 
-        positives = [v for v in vals if v > 0]
-        negatives = [-v for v in reversed(positives)]
-
-        # Add signed zeros to respect float representation
-        full = negatives + [-0.0, 0.0] + positives
+        # Full range: negative + positive (signed zeros)
+        full = [-v for v in reversed(vals)] + vals
 
         return torch.tensor(full, dtype=torch.float32)
