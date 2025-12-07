@@ -59,6 +59,7 @@ class TopTaggingFineTuneExperiment(TopTaggingExperiment):
             self.cfg.data.tagging_features_framesnet = (
                 self.warmstart_cfg.data.tagging_features_framesnet
             )
+            self.cfg.data.boost_jet = self.warmstart_cfg.data.boost_jet
             self.cfg.data.beam_reference = self.warmstart_cfg.data.beam_reference
             self.cfg.data.two_beams = self.warmstart_cfg.data.two_beams
             self.cfg.data.add_time_reference = self.warmstart_cfg.data.add_time_reference
