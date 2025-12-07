@@ -19,7 +19,6 @@ net:
  num_heads: 2
  mlp_ratio: 2
  attn_ratio: 2
- mix_linear: false
  compile: false
 
 defaults:

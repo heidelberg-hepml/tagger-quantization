@@ -84,7 +84,6 @@ def input_quantize_module(module, cfg):
                 in_s_channels=child._in_s_channels,
                 out_s_channels=child._out_s_channels,
                 bias=child._bias,
-                mix_linear=child._mix_linear,
                 **quant_kwargs,
             )
             module._modules[name] = new_layer
