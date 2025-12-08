@@ -22,7 +22,7 @@ weightquant:
  inout: false
  attn: true
  mlp: true
- framesnet: true
+ framesnet: false
 
  warmup_steps: 0
  quant_period: 10
