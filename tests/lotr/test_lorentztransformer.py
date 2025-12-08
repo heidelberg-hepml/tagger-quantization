@@ -21,6 +21,9 @@ CHANNELS = [
     (1, 4, 0, 2),
     (9, 3, 4, 0),
     (2, 7, 0, 0),
+    (0, 1, 2, 3),
+    (3, 0, 2, 3),
+    (0, 0, 2, 3),
 ]
 
 
@@ -115,7 +118,7 @@ def test_Linear_equivariance(
 
 
 @pytest.mark.parametrize("batch_dims", [(100,)])
-@pytest.mark.parametrize("in_v_channels,out_v_channels,in_s_channels,out_s_channels", CHANNELS)
+@pytest.mark.parametrize("in_v_channels,out_v_channels,in_s_channels,out_s_channels", CHANNELS[:4])
 def test_Linear_initialization(
     batch_dims,
     in_v_channels,
@@ -184,7 +187,7 @@ def test_Attention_equivariance(
 
 @pytest.mark.parametrize("batch_dims", BATCH_DIMS)
 @pytest.mark.parametrize("v_channels,s_channels", [(32, 4), (16, 8)])
-@pytest.mark.parametrize("mlp_ratio,num_layers", [(1, 1), (2, 1), (1, 2)])
+@pytest.mark.parametrize("mlp_ratio,num_layers", [(1, 2), (2, 2), (1, 3)])
 def test_MLP_equivariance(batch_dims, v_channels, s_channels, mlp_ratio, num_layers):
     layer = MLP(
         v_channels=v_channels,
