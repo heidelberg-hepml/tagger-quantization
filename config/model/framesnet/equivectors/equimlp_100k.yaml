@@ -3,7 +3,7 @@ _partial_: true
 
 n_vectors: null
 num_scalars: null
-hidden_channels: 64
+hidden_channels: 16
 num_layers_mlp: 2
 dropout_prob: null
 use_amp: false

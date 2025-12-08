@@ -1,6 +1,5 @@
 
-# tuned training config for small taggers
-# yields around AUC=0.9805 for a vanilla Transformer, matching the SAL-T paper
+# Training config for 20k params models
 iterations: 200000
 batchsize: 512
 
