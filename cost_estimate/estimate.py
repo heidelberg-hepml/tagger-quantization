@@ -64,7 +64,7 @@ def llocatransformer_cost(
     channels,
     mlp_ratio=4,
     attn_ratio=1,
-    channels_framesnet=128,
+    channels_framesnet=32,
     layers_framesnet=2,
     hidden_v_fraction=0.5,
     is_global=False,
