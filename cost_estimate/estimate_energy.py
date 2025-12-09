@@ -8,8 +8,16 @@ ARCHNAMES = [
     "particletransformer",
     "llocatransformer",
     "lorentztransformer",
-    "lorentztransformer_big",
     "lgatr",
+    "transformer_200k",
+    "transformer_20k",
+    "transformer_2k",
+    "llocatransformer_200k",
+    "llocatransformer_20k",
+    "llocatransformer_2k",
+    "lorentztransformer_200k",
+    "lorentztransformer_20k",
+    "lorentztransformer_2k",
 ]
 DTYPES = [
     ("float32", "float32"),
@@ -25,7 +33,7 @@ DTYPES = [
 
 def get_arch_kwargs(arch):
     if arch == "transformer":
-        return "transformer", dict(blocks=12, channels=128, mlp_ratio=4, attn_ratio=1)
+        return "transformer", dict(blocks=12, channels=128, mlp_ratio=2, attn_ratio=1)
     elif arch == "particletransformer":
         return "particletransformer", dict(
             blocks=12, channels=128, channels_pair=64, layers_pair=3, mlp_ratio=4, attn_ratio=1
@@ -34,21 +42,62 @@ def get_arch_kwargs(arch):
         return "llocatransformer", dict(
             blocks=12,
             channels=128,
-            mlp_ratio=4,
+            mlp_ratio=2,
             attn_ratio=1,
             channels_framesnet=32,
             layers_framesnet=2,
         )
     elif arch == "lorentztransformer":
         return "lorentztransformer", dict(
-            blocks=12, channels_v=32, channels_s=64, mlp_ratio=2, attn_ratio=2
-        )
-    elif arch == "lorentztransformer_big":
-        return "lorentztransformer", dict(
-            blocks=12, channels_v=32, channels_s=96, mlp_ratio=4, attn_ratio=1
+            blocks=12, channels_v=32, channels_s=96, mlp_ratio=2, attn_ratio=1
         )
     elif arch == "lgatr":
         return "lgatr", dict(blocks=12, channels_mv=16, channels_s=32, mlp_ratio=2, attn_ratio=2)
+    elif arch == "transformer_200k":
+        return "transformer", dict(blocks=4, channels=64, mlp_ratio=2, attn_ratio=1)
+    elif arch == "transformer_20k":
+        return "transformer", dict(blocks=2, channels=32, mlp_ratio=2, attn_ratio=1)
+    elif arch == "transformer_2k":
+        return "transformer", dict(blocks=1, channels=16, mlp_ratio=2, attn_ratio=1)
+    elif arch == "llocatransformer_200k":
+        return "llocatransformer", dict(
+            blocks=4,
+            channels=64,
+            mlp_ratio=2,
+            attn_ratio=1,
+            channels_framesnet=16,
+            layers_framesnet=2,
+        )
+    elif arch == "llocatransformer_20k":
+        return "llocatransformer", dict(
+            blocks=2,
+            channels=32,
+            mlp_ratio=2,
+            attn_ratio=1,
+            channels_framesnet=8,
+            layers_framesnet=2,
+        )
+    elif arch == "llocatransformer_2k":
+        return "llocatransformer", dict(
+            blocks=1,
+            channels=16,
+            mlp_ratio=1,
+            attn_ratio=1,
+            channels_framesnet=4,
+            layers_framesnet=2,
+        )
+    elif arch == "lorentztransformer_200k":
+        return "lorentztransformer", dict(
+            blocks=4, channels_v=16, channels_s=64, mlp_ratio=2, attn_ratio=1
+        )
+    elif arch == "lorentztransformer_20k":
+        return "lorentztransformer", dict(
+            blocks=2, channels_v=8, channels_s=32, mlp_ratio=2, attn_ratio=1
+        )
+    elif arch == "lorentztransformer_2k":
+        return "lorentztransformer", dict(
+            blocks=1, channels_v=4, channels_s=16, mlp_ratio=1, attn_ratio=1
+        )
     else:
         raise ValueError(f"Unknown architecture: {arch}")
 
@@ -63,7 +112,7 @@ def main(save=True):
         for dtype_a, dtype_w in DTYPES:
             dtype_default = dtype_a if dtype_a == "float32" else "float16"
             results_subsub = []
-            for mode in ["literature", "A100-estimate", "H100-estimate"]:
+            for mode in ["Horowitz", "A100-estimate", "H100-estimate"]:
                 energy = estimate_energy(
                     arch,
                     arch_kwargs,

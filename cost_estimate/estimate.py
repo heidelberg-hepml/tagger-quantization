@@ -400,9 +400,9 @@ def estimate_energy(
     dtype_a="float32",
     dtype_w="float32",
     dtype_fp="float32",
-    mode="literature",
+    mode="Horowitz",
 ):
-    if mode == "literature":
+    if mode == "Horowitz":
 
         def get_energy(mul_op, dtype):
             return get_energy_cost_7nm_literature(mul_op, dtype=dtype)
