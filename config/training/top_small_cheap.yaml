@@ -1,6 +1,0 @@
-# cheap version of top_small.yaml that achieves decent results with significantly less compute
-iterations: 100000
-batchsize: 1024
-
-defaults:
- - top_small

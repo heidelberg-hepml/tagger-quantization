@@ -42,18 +42,18 @@ python run.py -cp config model=tag_top_transformer training=top_transformer mode
 
 Table 2 (1k taggers)
 ```bash
-python run.py -cp config model=tag_transformer_1k training=top_small
-python run.py -cp config model=tag_transformer_1k training=top_small model.use_amp=true
-python run.py -cp config model=tag_transformer_1k training=top_small model.use_amp=true inputquant.use=true
-python run.py -cp config model=tag_transformer_1k training=top_small weightquant.use=true
-python run.py -cp config model=tag_transformer_1k training=top_small model.use_amp=true weightquant.use=true
-python run.py -cp config model=tag_transformer_1k training=top_small model.use_amp=true inputquant.use=true weightquant.use=true
+python run.py -cp config model=tag_transformer_1k training=top_1k
+python run.py -cp config model=tag_transformer_1k training=top_1k model.use_amp=true
+python run.py -cp config model=tag_transformer_1k training=top_1k model.use_amp=true inputquant.use=true
+python run.py -cp config model=tag_transformer_1k training=top_1k weightquant.use=true
+python run.py -cp config model=tag_transformer_1k training=top_1k model.use_amp=true weightquant.use=true
+python run.py -cp config model=tag_transformer_1k training=top_1k model.use_amp=true inputquant.use=true weightquant.use=true
 
 # repeat different quantization levels for each of these
-python run.py -cp config model=tag_lgatr_1k training=top_small
-python run.py -cp config model=tag_lotr_1k training=top_small
-python run.py -cp config model=tag_ParT_1k training=top_small
-python run.py -cp config model=tag_transformer_1k training=top_small model/framesnet=learnedpd model/framesnet/equivectors=equimlp_1k
+python run.py -cp config model=tag_lgatr_1k training=top_1k
+python run.py -cp config model=tag_lotr_1k training=top_1k
+python run.py -cp config model=tag_ParT_1k training=top_1k
+python run.py -cp config model=tag_transformer_1k training=top_1k model/framesnet=learnedpd model/framesnet/equivectors=equimlp_1k
 ```
 
 ### 4) Estimating computational cost
