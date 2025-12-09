@@ -239,7 +239,7 @@ class Attention(nn.Module):
         qkv_v, qkv_s = self.linear_in(vectors, scalars)
 
         q, k, v = self._pre_reshape(qkv_v, qkv_s)
-        out = scaled_dot_product_attention_nocompile(q, k, v, **attn_kwargs)
+        out = scaled_dot_product_attention_careful(q, k, v, **attn_kwargs)
         h_v, h_s = self._post_reshape(out)
 
         out_v, out_s = self.linear_out(h_v, h_s)
