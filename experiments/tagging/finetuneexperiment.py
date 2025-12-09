@@ -2,9 +2,11 @@ import os
 
 import torch
 from hydra.core.hydra_config import HydraConfig
+from lgatr.layers.linear import EquiLinear
 from omegaconf import OmegaConf, open_dict
 from torch_ema import ExponentialMovingAverage
 
+from experiments.baselines.lorentztransformer import Linear as LorentzLinear
 from experiments.logger import LOGGER
 from experiments.tagging.experiment import TopTaggingExperiment
 
@@ -33,12 +35,14 @@ class TopTaggingFineTuneExperiment(TopTaggingExperiment):
             self.cfg.finetune.backbone_path, self.cfg.finetune.backbone_cfg
         )
         self.warmstart_cfg = OmegaConf.load(warmstart_path)
-        assert self.warmstart_cfg.exp_type in ["jctagging", "topxltagging"]
+        assert self.warmstart_cfg.exp_type in ["jctagging", "toptagxl"]
         assert self.warmstart_cfg.data.features == "fourmomenta"
 
         if self.warmstart_cfg.model._target_ not in [
             "experiments.tagging.wrappers.TransformerWrapper",
             "experiments.tagging.wrappers.ParTWrapper",
+            "experiments.tagging.wrappers.LGATrWrapper",
+            "experiments.tagging.wrappers.LoTrWrapper",
         ]:
             raise NotImplementedError
 
@@ -98,6 +102,20 @@ class TopTaggingFineTuneExperiment(TopTaggingExperiment):
             for module in self.model.net.fc.modules():
                 if hasattr(module, "reset_parameters"):
                     module.reset_parameters()
+        elif self.warmstart_cfg.model._target_ == "experiments.tagging.wrappers.LGATrWrapper":
+            self.model.net.linear_out = EquiLinear(
+                in_mv_channels=self.cfg.model.net.hidden_mv_channels,
+                out_mv_channels=self.num_outputs,
+                in_s_channels=self.cfg.model.net.hidden_s_channels,
+                out_s_channels=self.cfg.model.net.out_s_channels,
+            ).to(self.device)
+        elif self.warmstart_cfg.model._target_ == "experiments.tagging.wrappers.LoTrWrapper":
+            self.model.net.linear_out = LorentzLinear(
+                in_v_channels=self.cfg.model.net.hidden_v_channels,
+                out_v_channels=self.cfg.model.net.out_v_channels,
+                in_s_channels=self.cfg.model.net.hidden_s_channels,
+                out_s_channels=self.num_outputs,
+            ).to(self.device)
         else:
             raise NotImplementedError
 
@@ -185,6 +203,21 @@ class TopTaggingFineTuneExperiment(TopTaggingExperiment):
                     "weight_decay": self.cfg.training.weight_decay,
                     "lr": self.cfg.finetune.lr_head,
                 },
+            ]
+        elif self.warmstart_cfg.model._target_ in [
+            "experiments.tagging.wrappers.LGATrWrapper",
+            "experiments.tagging.wrappers.LoTrWrapper",
+        ]:
+            # collect parameter lists
+            params_backbone = list(self.model.net.linear_in.parameters()) + list(
+                self.model.net.blocks.parameters()
+            )
+            params_head = self.model.net.linear_out.parameters()
+
+            # assign parameter-specific learning rates
+            param_groups = [
+                {"params": params_backbone, "lr": self.cfg.finetune.lr_backbone},
+                {"params": params_head, "lr": self.cfg.finetune.lr_head},
             ]
         else:
             raise NotImplementedError

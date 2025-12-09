@@ -49,12 +49,28 @@ def scaled_dot_product_attention_nocompile(*args, **attn_kwargs):
 
 
 class Dropout(nn.Module):
+    """Dropout module for scalar and vector features.
+
+    For vector features, the same dropout mask is applied to all four components of each vector.
+    """
     def __init__(self, dropout_prob: float):
         super().__init__()
         self._dropout_prob = dropout_prob
 
     def forward(self, vectors, scalars):
-        # apply the same dropout to all vector components
+        """
+        Parameters
+        ----------
+        vectors : torch.Tensor
+            A tensor of shape (..., v_channels, 4) representing Lorentz vectors.
+        scalars : torch.Tensor
+            A tensor of shape (..., s_channels) representing scalar features.
+
+        Returns
+        -------
+        torch.Tensor, torch.Tensor
+            Tensors of the same shape as input representing the dropped out vectors and scalars.
+        """
         # have to reshape vectors because dropout1d constrains input shape
         v = vectors.reshape(-1, 4)
         out_v = dropout1d(v, p=self._dropout_prob, training=self.training)
@@ -65,12 +81,29 @@ class Dropout(nn.Module):
 
 
 class RMSNorm(nn.Module):
+    """Normalize jointly over vector and scalar features.
+
+    For vectors, we use the absolute value of the squared norm because otherwise negative norms are possible.
+    """
     def __init__(self, epsilon: float = 0.01):
         super().__init__()
         self.epsilon = epsilon
 
     @minimum_autocast_precision(torch.float32)
     def forward(self, vectors, scalars):
+        """
+        Parameters
+        ----------
+        vectors : torch.Tensor
+            A tensor of shape (..., v_channels, 4) representing Lorentz vectors.
+        scalars : torch.Tensor
+            A tensor of shape (..., s_channels) representing scalar features.
+
+        Returns
+        -------
+        torch.Tensor, torch.Tensor
+            Tensors of the same shape as input representing the normalized vectors and scalars.
+        """
         v_squared_norm = squared_norm(vectors).abs()
         s_squared_norm = scalars.square()
         sum_squared_norms = v_squared_norm.sum(dim=-1) + s_squared_norm.sum(dim=-1)
@@ -82,36 +115,11 @@ class RMSNorm(nn.Module):
         return vectors_out, scalars_out
 
 
-class GatedLinearUnit(nn.Module):
-    def __init__(
-        self,
-        in_v_channels: int,
-        out_v_channels: int,
-        in_s_channels: int,
-        out_s_channels: int,
-        nonlinearity: str = "gelu",
-    ):
-        super().__init__()
-        self.linear = Linear(
-            in_v_channels=in_v_channels,
-            out_v_channels=3 * out_v_channels,
-            in_s_channels=in_s_channels,
-            out_s_channels=2 * out_s_channels,
-        )
-        self.nonlinearity = get_nonlinearity(nonlinearity)
-
-    def forward(self, vectors, scalars):
-        v_full, s_full = self.linear(vectors, scalars)
-        v_pre, v_gates_1, v_gates_2 = v_full.chunk(3, dim=-2)
-        s_pre, s_gates = s_full.chunk(2, dim=-1)
-
-        v_gates = inner_product(v_gates_1, v_gates_2).unsqueeze(-1)
-        vectors_out = self.nonlinearity(v_gates) * v_pre
-        scalars_out = self.nonlinearity(s_gates) * s_pre
-        return vectors_out, scalars_out
-
-
 class Linear(nn.Module):
+    """Linear operations for vector and scalar features.
+
+    Supports optional mixing between vector and scalar features to improve expressivity.
+    """
     def __init__(
         self,
         in_v_channels: int,
@@ -121,6 +129,24 @@ class Linear(nn.Module):
         bias: bool = True,
         initialization: str = "default",
     ):
+        """
+        Parameters
+        ----------
+        in_v_channels : int
+            Number of input vector channels.
+        out_v_channels : int
+            Number of output vector channels.
+        in_s_channels : int
+            Number of input scalar channels.
+        out_s_channels : int
+            Number of output scalar channels.
+        bias : bool, optional
+            Whether to include a bias term in the scalar linear layer, by default True.
+        initialization : str, optional
+            Initialization method for weights, by default "default".
+            The alternative "small" initializes weights to smaller values,
+            which might improve stability in attention projections.
+        """
         super().__init__()
         self._in_v_channels = in_v_channels
         self._out_v_channels = out_v_channels
@@ -141,6 +167,19 @@ class Linear(nn.Module):
         self.reset_parameters(initialization)
 
     def forward(self, vectors, scalars):
+        """
+        Parameters
+        ----------
+        vectors : torch.Tensor
+            A tensor of shape (..., v_channels, 4) representing Lorentz vectors.
+        scalars : torch.Tensor
+            A tensor of shape (..., s_channels) representing scalar features.
+
+        Returns
+        -------
+        torch.Tensor, torch.Tensor
+            Tensors of the same shape as input representing the normalized vectors and scalars.
+        """
         vectors_out = self.weight_v @ vectors
         scalars_out = self.linear_s(scalars)
         return vectors_out, scalars_out
@@ -155,7 +194,7 @@ class Linear(nn.Module):
         else:
             raise ValueError(f"Unknown initialization: {initialization}")
 
-        fan_in = self._in_v_channels
+        fan_in = max(self._in_v_channels, 1)
         bound = v_factor / math.sqrt(fan_in)
         nn.init.uniform_(self.weight_v, a=-bound, b=bound)
 
@@ -164,7 +203,55 @@ class Linear(nn.Module):
         nn.init.uniform_(self.linear_s.weight, a=-bound, b=bound)
 
 
+
+class GatedLinearUnit(nn.Module):
+    """Gated linear unit (GLU) for vector and scalar features.
+
+    Scalar gates are computed from scalar features,
+    while vector gates are computed from inner products of vector features.
+    """
+    def __init__(
+        self,
+        in_v_channels: int,
+        out_v_channels: int,
+        in_s_channels: int,
+        out_s_channels: int,
+        nonlinearity: str = "gelu",
+    ):
+        super().__init__()
+        self.linear = Linear(
+            in_v_channels=in_v_channels,
+            out_v_channels=3 * out_v_channels,
+            in_s_channels=in_s_channels,
+            out_s_channels=2 * out_s_channels,
+        )
+        self.nonlinearity = get_nonlinearity(nonlinearity)
+
+    def forward(self, vectors, scalars):
+        """
+        Parameters
+        ----------
+        vectors : torch.Tensor
+            A tensor of shape (..., v_channels, 4) representing Lorentz vectors.
+        scalars : torch.Tensor
+            A tensor of shape (..., s_channels) representing scalar features.
+
+        Returns
+        -------
+        torch.Tensor, torch.Tensor
+            Tensors of the same shape as input representing the normalized vectors and scalars.
+        """
+        v_full, s_full = self.linear(vectors, scalars)
+        v_pre, v_gates_1, v_gates_2 = v_full.chunk(3, dim=-2)
+        s_pre, s_gates = s_full.chunk(2, dim=-1)
+
+        v_gates = inner_product(v_gates_1, v_gates_2).unsqueeze(-1)
+        vectors_out = self.nonlinearity(v_gates) * v_pre
+        scalars_out = self.nonlinearity(s_gates) * s_pre
+        return vectors_out, scalars_out
+
 class Attention(nn.Module):
+    """Attention module for Lorentz vectors and scalar features."""
     def __init__(
         self,
         v_channels: int,
@@ -213,7 +300,7 @@ class Attention(nn.Module):
             .movedim(-1, -3)
         )
 
-        # normalize for stability
+        # normalize for stability (important)
         qkv_v, qkv_s = self.norm(qkv_v, qkv_s)
 
         q_v, k_v, v_v = qkv_v.unbind(0)
@@ -236,6 +323,21 @@ class Attention(nn.Module):
         return h_v, h_s
 
     def forward(self, vectors, scalars, **attn_kwargs):
+        """
+        Parameters
+        ----------
+        vectors : torch.Tensor
+            A tensor of shape (..., v_channels, 4) representing Lorentz vectors.
+        scalars : torch.Tensor
+            A tensor of shape (..., s_channels) representing scalar features.
+        **attn_kwargs : dict
+            Additional keyword arguments for the attention function.
+
+        Returns
+        -------
+        torch.Tensor, torch.Tensor
+            Tensors of the same shape as input representing the normalized vectors and scalars.
+        """
         qkv_v, qkv_s = self.linear_in(vectors, scalars)
 
         q, k, v = self._pre_reshape(qkv_v, qkv_s)
@@ -250,22 +352,24 @@ class Attention(nn.Module):
 
 
 class MLP(nn.Module):
+    """Multi-layer perceptron (MLP) for vector and scalar features."""
     def __init__(
         self,
         v_channels: int,
         s_channels: int,
         nonlinearity: str = "gelu",
         mlp_ratio: int = 2,
-        num_layers: int = 1,
+        num_layers: int = 2,
         dropout_prob: float | None = None,
     ):
         super().__init__()
+        assert num_layers >= 2
         layers = []
 
-        v_channels_list = [v_channels] + [mlp_ratio * v_channels] * num_layers + [v_channels]
-        s_channels_list = [s_channels] + [mlp_ratio * s_channels] * num_layers + [s_channels]
+        v_channels_list = [v_channels] + [mlp_ratio * v_channels] * (num_layers - 1) + [v_channels]
+        s_channels_list = [s_channels] + [mlp_ratio * s_channels] * (num_layers - 1) + [s_channels]
 
-        for i in range(num_layers):
+        for i in range(num_layers - 1):
             layers.append(
                 GatedLinearUnit(
                     in_v_channels=v_channels_list[i],
@@ -289,6 +393,19 @@ class MLP(nn.Module):
         self.layers = nn.ModuleList(layers)
 
     def forward(self, vectors, scalars):
+        """
+        Parameters
+        ----------
+        vectors : torch.Tensor
+            A tensor of shape (..., v_channels, 4) representing Lorentz vectors.
+        scalars : torch.Tensor
+            A tensor of shape (..., s_channels) representing scalar features.
+
+        Returns
+        -------
+        torch.Tensor, torch.Tensor
+            Tensors of the same shape as input representing the normalized vectors and scalars.
+        """
         v, s = vectors, scalars
 
         for layer in self.layers:
@@ -298,6 +415,8 @@ class MLP(nn.Module):
 
 
 class LorentzTransformerBlock(nn.Module):
+    """A single block of the Lorentz Transformer,
+    consisting of attention and MLP layers, pre-norm and residual connections."""
     def __init__(
         self,
         v_channels: int,
@@ -306,7 +425,7 @@ class LorentzTransformerBlock(nn.Module):
         nonlinearity: str = "gelu",
         mlp_ratio: int = 2,
         attn_ratio: int = 1,
-        num_layers_mlp: int = 1,
+        num_layers_mlp: int = 2,
         dropout_prob: float | None = None,
     ):
         super().__init__()
@@ -331,6 +450,21 @@ class LorentzTransformerBlock(nn.Module):
         )
 
     def forward(self, vectors, scalars, **attn_kwargs):
+        """
+        Parameters
+        ----------
+        vectors : torch.Tensor
+            A tensor of shape (..., v_channels, 4) representing Lorentz vectors.
+        scalars : torch.Tensor
+            A tensor of shape (..., s_channels) representing scalar features.
+        **attn_kwargs : dict
+            Additional keyword arguments for the attention function.
+
+        Returns
+        -------
+        torch.Tensor, torch.Tensor
+            Tensors of the same shape as input representing the normalized vectors and scalars.
+        """
         h_v, h_s = self.norm(vectors, scalars)
 
         h_v, h_s = self.attention(
@@ -353,6 +487,7 @@ class LorentzTransformerBlock(nn.Module):
 
 
 class LorentzTransformer(nn.Module):
+    """Lorentz Transformer model for processing Lorentz vectors and scalar features."""
     def __init__(
         self,
         in_v_channels: int,
@@ -366,11 +501,45 @@ class LorentzTransformer(nn.Module):
         nonlinearity: str = "gelu",
         mlp_ratio: int = 2,
         attn_ratio: int = 1,
-        num_layers_mlp: int = 1,
+        num_layers_mlp: int = 2,
         dropout_prob: float | None = None,
         checkpoint_blocks: bool = False,
         compile: bool = False,
     ):
+        """
+        Parameters
+        ----------
+        in_v_channels : int
+            Number of input vector channels.
+        out_v_channels : int
+            Number of output vector channels.
+        hidden_v_channels : int
+            Number of hidden vector channels.
+        in_s_channels : int
+            Number of input scalar channels.
+        out_s_channels : int
+            Number of output scalar channels.
+        hidden_s_channels : int
+            Number of hidden scalar channels.
+        num_blocks : int
+            Number of Lorentz Transformer blocks.
+        num_heads : int
+            Number of attention heads.
+        nonlinearity : str, optional
+            Nonlinearity type for MLP layers, by default "gelu".
+        mlp_ratio : int, optional
+            Expansion ratio for MLP hidden layers, by default 2.
+        attn_ratio : int, optional
+            Expansion ratio for attention hidden layers, by default 1.
+        num_layers_mlp : int, optional
+            Number of layers in MLP, by default 2.
+        dropout_prob : float | None, optional
+            Dropout probability, by default None.
+        checkpoint_blocks : bool, optional
+            Whether to use gradient checkpointing for blocks, by default False.
+        compile : bool, optional
+            Whether to compile the model with torch.compile, by default False.
+        """
         super().__init__()
 
         self.linear_in = Linear(
@@ -412,6 +581,21 @@ class LorentzTransformer(nn.Module):
             self.__class__ = torch.compile(self.__class__, dynamic=True, mode="default")
 
     def forward(self, vectors, scalars, **attn_kwargs):
+        """
+        Parameters
+        ----------
+        vectors : torch.Tensor
+            A tensor of shape (..., v_channels, 4) representing Lorentz vectors.
+        scalars : torch.Tensor
+            A tensor of shape (..., s_channels) representing scalar features.
+        **attn_kwargs : dict
+            Additional keyword arguments for the attention function.
+
+        Returns
+        -------
+        torch.Tensor, torch.Tensor
+            Tensors of the same shape as input representing the normalized vectors and scalars.
+        """
         h_v, h_s = self.linear_in(vectors, scalars)
 
         for block in self.blocks:
