@@ -743,7 +743,7 @@ class CGENNWrapper(nn.Module):
         return out, {}, None
 
 
-class LoTrWrapper(nn.Module):
+class LGATrSlimWrapper(nn.Module):
     def __init__(
         self,
         net,

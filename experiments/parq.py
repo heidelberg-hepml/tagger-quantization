@@ -70,7 +70,7 @@ def init_parq_optimizer(base_optimizer, cfg):
 
 
 def init_parq_param_groups(model, cfg, modelname, param_groups=None):
-    if modelname in ["Transformer", "LGATr", "LorentzTransformer"]:
+    if modelname in ["Transformer", "LGATr", "LGATrSlim"]:
         # Transformer and LGATr use the same high-level module syntax
         assert param_groups is None  # not manually specified for these models
         param_groups = init_param_groups_transformer(model, cfg)
