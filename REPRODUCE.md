@@ -92,16 +92,26 @@ python run.py -cp config model=tag_ParT_100k training=top_100k
 python run.py -cp config model=tag_ParT training=top_ParT
 ```
 
-Table 6: Landscape of fp8+QAT top taggers
+Table 5: Landscape of fp8+QAT top taggers
 ```bash
 # from-scratch trainings
-python run.py -cp config model=tag_ParT training=top_transformer training.scheduler=CosineAnnealingLR weightquant.use=true inputquant.use=true model.use_amp=true
+# no quantization: same as Table 1
+# PARQ
 python run.py -cp config model=tag_transformer training=top_transformer training.scheduler=CosineAnnealingLR weightquant.use=true inputquant.use=true model.use_amp=true
 python run.py -cp config model=tag_transformer model/framesnet=learnedpd model/framesnet/equivectors=equimlp training=top_transformer training.scheduler=CosineAnnealingLR weightquant.use=true inputquant.use=true model.use_amp=true
 python run.py -cp config model=tag_lotr training=top_lotr weightquant.use=true inputquant.use=true model.use_amp=true
+python run.py -cp config model=tag_ParT training=top_ParT weightquant.use=true inputquant.use=true model.use_amp=true
+# STE: add weightquant.prox_map=hard to the PARQ commands
 
 # pretraining + finetuning
-python run.py -cp config -cn jctagging model=tag_lotr training=jc_transformer data.features=fourmomenta exp_name=pretrain run_name=lgatr-slim-pretrain-fp8QAT
+# no quantization (same as in Table 1)
+python run.py -cp config -cn jctagging model=tag_lotr training=jc_transformer data.features=fourmomenta exp_name=pretrain run_name=lgatr-slim-pretrain
+python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/lgatr-slim-pretrain training=top_lotr exp_name=finetune run_name=lgatr-slim-finetune
+# STE
+python run.py -cp config -cn jctagging model=tag_lotr training=jc_transformer data.features=fourmomenta exp_name=pretrain run_name=lgatr-slim-pretrain-fp8-STE
+python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/lgatr-slim-pretrain training=top_lotr model.use_amp=true inputquant.use=true weightquant.use=true weightquant.prox_map=hard
+# PARQ
+python run.py -cp config -cn jctagging model=tag_lotr training=jc_transformer data.features=fourmomenta exp_name=pretrain run_name=lgatr-slim-pretrain-fp8-PARQ
 python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/lgatr-slim-pretrain training=top_lotr model.use_amp=true inputquant.use=true weightquant.use=true
 ```
 
@@ -111,7 +121,13 @@ python run.py -cp config model=tag_transformer training=top_transformer
 python run.py -cp config model=tag_transformer training=top_transformer model.use_amp=true
 python run.py -cp config model=tag_transformer training=top_transformer model.use_amp=true inputquant.use=true
 python run.py -cp config model=tag_transformer training=top_transformer training.scheduler=CosineAnnealingLR model.use_amp=true inputquant.use=true
-# Repeat for each network, with CosineAnnealingLR when using top_transformer training config
+
+# Repeat the four quantization levels for each network
+# with training.scheduler=CosineAnnealingLR for tag_transformer and fp8+QAT
+python run.py -cp config model=tag_transformer model/framesnet=learnedpd training=top_transformer
+python run.py -cp config model=tag_lotr training=top_lotr
+python run.py -cp config model=tag_lgatr training=top_lgatr
+python run.py -cp config model=tag_ParT training=tag_ParT
 ```
 
 Figure 8
