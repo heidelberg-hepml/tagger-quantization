@@ -414,8 +414,8 @@ class MLP(nn.Module):
         return v, s
 
 
-class LorentzTransformerBlock(nn.Module):
-    """A single block of the Lorentz Transformer,
+class LGATrSlimBlock(nn.Module):
+    """A single block of the L-GATr-slim,
     consisting of attention and MLP layers, pre-norm and residual connections."""
     def __init__(
         self,
@@ -486,8 +486,8 @@ class LorentzTransformerBlock(nn.Module):
         return outputs_v, outputs_s
 
 
-class LorentzTransformer(nn.Module):
-    """Lorentz Transformer model for processing Lorentz vectors and scalar features."""
+class LGATrSlim(nn.Module):
+    """L-GATr-slim model for processing Lorentz vectors and scalar features."""
     def __init__(
         self,
         in_v_channels: int,
@@ -551,7 +551,7 @@ class LorentzTransformer(nn.Module):
 
         self.blocks = nn.ModuleList(
             [
-                LorentzTransformerBlock(
+                LGATrSlimBlock(
                     v_channels=hidden_v_channels,
                     s_channels=hidden_s_channels,
                     num_heads=num_heads,
