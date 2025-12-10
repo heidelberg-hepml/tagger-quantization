@@ -111,7 +111,7 @@ python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/l
 python run.py -cp config -cn jctagging model=tag_lotr training=jc_transformer data.features=fourmomenta weightquant.use=true inputquant.use=true model.use_amp=true exp_name=pretrain run_name=lgatr-slim-pretrain-fp8-STE
 python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/lgatr-slim-pretrain training=top_lotr model.use_amp=true inputquant.use=true weightquant.use=true weightquant.prox_map=hard
 # PARQ
-python run.py -cp config -cn jctagging model=tag_lotr training=jc_transformer data.features=fourmomenta exp_name=pretrain run_name=lgatr-slim-pretrain-fp8-PARQ
+python run.py -cp config -cn jctagging model=tag_lotr training=jc_transformer data.features=fourmomenta model.use_amp=true inputquant.use=true exp_name=pretrain run_name=lgatr-slim-pretrain-fp8-PARQ
 python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/lgatr-slim-pretrain training=top_lotr model.use_amp=true inputquant.use=true weightquant.use=true
 ```
 
