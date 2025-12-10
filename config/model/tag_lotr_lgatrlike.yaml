@@ -1,0 +1,10 @@
+net:
+ out_s_channels: null
+ hidden_v_channels: 32
+ hidden_s_channels: 64
+
+ mlp_ratio: 2
+ attn_ratio: 2
+
+defaults:
+ - tag_lotr
