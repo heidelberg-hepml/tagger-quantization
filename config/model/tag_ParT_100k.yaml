@@ -1,33 +1,10 @@
-# 2.3k parameters mini ParT
-_target_: experiments.tagging.wrappers.ParTWrapper
-in_channels: null
-out_channels: null
-use_amp: false
-add_fourmomenta_backbone: false
-
 net:
- _target_: lloca.backbone.particletransformer.ParticleTransformer
- _partial_: true
- input_dim: null
- num_classes: null
-
  attn_reps: 12x0n+1x1n
  num_layers: 3
  num_cls_layers: 1 # need >=1 class-attention block
  num_heads: 4
- embed_dims: [64,64,64]
+ embed_dims: [64,128,64]
  pair_embed_dims: [16,16,16]
 
- use_amp: ${model.use_amp}
- trim: false
-
- use_pre_activation_pair: false
- pair_input_dim: 4
- cls_block_params:
-  dropout: 0
-  attn_dropout: 0
-  activation_dropout: 0
- version: 1
-
 defaults:
- - framesnet: identity
+ - tag_ParT

@@ -1,5 +1,4 @@
-
-# Training config for 20k params models
+# Training config for 10k params models
 iterations: 200000
 batchsize: 512
 

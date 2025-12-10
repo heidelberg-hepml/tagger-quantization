@@ -1,24 +1,9 @@
-# 1.7k parameters mini Transformer
-_target_: experiments.tagging.wrappers.TransformerWrapper
-in_channels: null
-out_channels: null
-use_amp: false
-add_fourmomenta_backbone: false
-mean_aggregation: true
-attention_backend: xformers
-
 net:
- _target_: lloca.backbone.transformer.Transformer
- _partial_: true
-
- in_channels: null
- attn_reps: "4x0n+1x1n" # reps can be varied, but number of channels should stay fixed
- out_channels: null
+ attn_reps: "4x0n+1x1n"
 
  num_blocks: 1
  num_heads: 2
  mlp_factor: 1
- attention_factor: 1
 
 defaults:
- - framesnet: identity
+ - tag_transformer
