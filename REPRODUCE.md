@@ -24,7 +24,7 @@ python data/collect_data.py toptagging
 
 ### 3) Training taggers
 
-Table 1 (1M taggers)
+<!-- Table 1 (1M taggers)
 ```bash
 python run.py -cp config model=tag_top_transformer training=top_transformer
 python run.py -cp config model=tag_top_transformer training=top_transformer model.use_amp=true
@@ -54,6 +54,45 @@ python run.py -cp config model=tag_lgatr_1k training=top_1k
 python run.py -cp config model=tag_lotr_1k training=top_1k
 python run.py -cp config model=tag_ParT_1k training=top_1k
 python run.py -cp config model=tag_transformer_1k training=top_1k model/framesnet=learnedpd model/framesnet/equivectors=equimlp_1k
+``` -->
+
+Figure 3: Scaling
+```bash
+python run.py -cp config model=tag_transformer_1k training=top_1k
+python run.py -cp config model=tag_transformer_10k training=top_10k
+python run.py -cp config model=tag_transformer_100k training=top_100k
+python run.py -cp config model=tag_transformer training=top_transformer
+#Repeat for each network
+python run.py -cp config model=tag_lotr_10k training=top_10k
+python run.py -cp config model=tag_part_10k training=top_10k
+python run.py -cp config model=tag_transformer_10k training=top_10k model/framesnet=learnedpd model/framesnet/equivectors=equimlp_10k
+```
+
+Table 6: Landscape of fp8+QAT top tagger
+```bash
+python run.py -cp config model=tag_transformer training=top_transformer training.scheduler=CosineAnnealingLR weightquant.use=true inputquant.use=true model.use_amp=true
+python run.py -cp config model=tag_transformer model/framesnet=learnedpd model/framesnet/equivectors=equimlp training=top_transformer training.scheduler=CosineAnnealingLR weightquant.use=true inputquant.use=true model.use_amp=true
+python run.py -cp config model=tag_lgatr training=top_lgatr weightquant.use=true inputquant.use=true model.use_amp=true
+python run.py -cp config model=tag_lotr training=top_lotr weightquant.use=true inputquant.use=true model.use_amp=true
+python run.py -cp config model=tag_ParT training=top_transformer training.scheduler=CosineAnnealingLR weightquant.use=true inputquant.use=true model.use_amp=true
+```
+
+Figure 7
+```bash
+python run.py -cp config model=tag_transformer training=top_transformer
+python run.py -cp config model=tag_transformer training=top_transformer model.use_amp=true
+python run.py -cp config model=tag_transformer training=top_transformer model.use_amp=true inputquant.use=true
+python run.py -cp config model=tag_transformer training=top_transformer training.scheduler=CosineAnnealingLR model.use_amp=true inputquant.use=true
+# Repeat for each network, with CosineAnnealingLR when using top_transformer training config
+```
+
+Figure 8
+```bash
+python run.py -cp config model=tag_transformer_1k training=top_1k
+python run.py -cp config model=tag_transformer_1k training=top_1k model.use_amp=true
+python run.py -cp config model=tag_transformer_1k training=top_1k model.use_amp=true inputquant.use=true
+python run.py -cp config model=tag_transformer_1k training=top_1k model.use_amp=true inputquant.use=true weightquant.use=true
+# Repeat for each network
 ```
 
 ### 4) Estimating computational cost
