@@ -7,8 +7,7 @@ ARCHNAMES = [
     "transformer",
     "particletransformer",
     "llocatransformer",
-    "lorentztransformer",
-    "lorentztransformer_big",
+    "lgatr-slim",
     "lgatr",
 ]
 DTYPES = [
@@ -39,12 +38,8 @@ def get_arch_kwargs(arch):
             channels_framesnet=128,
             layers_framesnet=2,
         )
-    elif arch == "lorentztransformer":
-        return "lorentztransformer", dict(
-            blocks=12, channels_v=32, channels_s=64, mlp_ratio=2, attn_ratio=2
-        )
-    elif arch == "lorentztransformer_big":
-        return "lorentztransformer", dict(
+    elif arch == "lgatr-slim":
+        return "lgatr-slim", dict(
             blocks=12, channels_v=32, channels_s=96, mlp_ratio=4, attn_ratio=1
         )
     elif arch == "lgatr":
