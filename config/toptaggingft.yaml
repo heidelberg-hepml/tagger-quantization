@@ -4,8 +4,8 @@ exp_name: topft_local
 finetune:
  backbone_path: ???
  backbone_cfg: config.yaml
- lr_backbone: 3e-5
- lr_head: 3e-3
+ lr_backbone: 3e-6
+ lr_head: 3e-4
 
 defaults:
  - toptagging
