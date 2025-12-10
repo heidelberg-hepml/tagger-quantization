@@ -101,20 +101,20 @@ def embed_tagging_data(fourmomenta, scalars, ptr, cfg_data):
         fourmomenta = torch.einsum("ijk,ik->ij", jet_boost, fourmomenta)
 
     jet = scatter(fourmomenta, batch, dim=0, reduce="sum").index_select(0, batch)
-    global_tagging_features = get_tagging_features(
+    tagging_features = get_tagging_features(
         fourmomenta,
         jet,
-        tagging_features=cfg_data.tagging_features_framesnet,
+        tagging_features=cfg_data.tagging_features,
     )
-    global_tagging_features[is_spurion] = 0
+    tagging_features[is_spurion] = 0
 
-    global_tagging_features = global_tagging_features.to(scalars.dtype)
+    tagging_features = tagging_features.to(scalars.dtype)
 
     embedding = {
         "fourmomenta": fourmomenta,
         "scalars": scalars,
         "is_spurion": is_spurion,
-        "global_tagging_features": global_tagging_features,
+        "tagging_features": tagging_features,
         "batch": batch,
         "ptr": ptr,
     }

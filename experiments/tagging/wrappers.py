@@ -48,7 +48,7 @@ class TaggerWrapper(nn.Module):
         # extract embedding
         fourmomenta_withspurions = embedding["fourmomenta"]
         scalars_withspurions = embedding["scalars"]
-        global_tagging_features_withspurions = embedding["global_tagging_features"]
+        global_tagging_features_withspurions = embedding["tagging_features"]
         batch_withspurions = embedding["batch"]
         is_spurion = embedding["is_spurion"]
         ptr_withspurions = embedding["ptr"]
@@ -391,7 +391,7 @@ class LGATrWrapper(nn.Module):
     def forward(self, embedding):
         # extract embedding (includes spurions)
         fourmomenta = embedding["fourmomenta"]
-        scalars = embedding["scalars"]
+        scalars = torch.cat([embedding["scalars"], embedding["tagging_features"]], dim=-1)
         batch = embedding["batch"]
         ptr = embedding["ptr"]
         is_spurion = embedding["is_spurion"]
@@ -586,7 +586,7 @@ class LorentzNetWrapper(nn.Module):
     def forward(self, embedding):
         # extract embedding (includes spurions)
         fourmomenta = embedding["fourmomenta"]
-        scalars = embedding["scalars"]
+        scalars = torch.cat([embedding["scalars"], embedding["tagging_features"]], dim=-1)
         batch = embedding["batch"]
         ptr = embedding["ptr"]
         is_spurion = embedding["is_spurion"]
@@ -620,7 +620,7 @@ class PELICANWrapper(nn.Module):
     def forward(self, embedding):
         # extract embedding (includes spurions)
         fourmomenta = embedding["fourmomenta"]
-        scalars = embedding["scalars"]
+        scalars = torch.cat([embedding["scalars"], embedding["tagging_features"]], dim=-1)
         batch = embedding["batch"]
         ptr = embedding["ptr"]
         is_spurion = embedding["is_spurion"]
@@ -661,7 +661,7 @@ class PELICANWrapperOfficial(nn.Module):
     def forward(self, embedding):
         # extract embedding (includes spurions)
         fourmomenta = embedding["fourmomenta"]
-        scalars = embedding["scalars"]
+        scalars = torch.cat([embedding["scalars"], embedding["tagging_features"]], dim=-1)
         batch = embedding["batch"]
         is_spurion = embedding["is_spurion"]
 
@@ -689,7 +689,7 @@ class CGENNWrapper(nn.Module):
 
         # extract embedding (includes spurions)
         fourmomenta = embedding["fourmomenta"]
-        scalars = embedding["scalars"]
+        scalars = torch.cat([embedding["scalars"], embedding["tagging_features"]], dim=-1)
         batch = embedding["batch"]
         ptr = embedding["ptr"]
         is_spurion = embedding["is_spurion"]
@@ -764,7 +764,7 @@ class LoTrWrapper(nn.Module):
     def forward(self, embedding):
         # extract embedding (includes spurions)
         fourmomenta = embedding["fourmomenta"]
-        scalars = embedding["scalars"]
+        scalars = torch.cat([embedding["scalars"], embedding["tagging_features"]], dim=-1)
         batch = embedding["batch"]
         ptr = embedding["ptr"]
         is_spurion = embedding["is_spurion"]

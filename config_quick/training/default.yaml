@@ -19,7 +19,7 @@ onecycle_div_factor: 25
 onecycle_pct_start: 0.3
 
 es_patience: 100
-es_load_best_model: true
+es_load_best_model: false
 
 log_every_n_steps: 200
 validate_every_n_steps: 5000

@@ -1,0 +1,10 @@
+net:
+ attn_reps: 12x0n+1x1n
+ num_layers: 3
+ num_cls_layers: 1 # need >=1 class-attention block
+ num_heads: 4
+ embed_dims: [64,128,64]
+ pair_embed_dims: [16,16,16]
+
+defaults:
+ - tag_ParT

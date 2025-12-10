@@ -1,0 +1,8 @@
+# Training config for 10k params models
+iterations: 200000
+batchsize: 512
+
+lr: 3e-3
+
+defaults:
+ - tag_default

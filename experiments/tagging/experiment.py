@@ -24,21 +24,31 @@ class TaggingExperiment(BaseExperiment):
         self.momentum_dtype = torch.float64 if self.cfg.data.momentum_float64 else torch.float32
 
         self.cfg.model.out_channels = self.num_outputs
-        if modelname == "LGATr":
-            self.cfg.model.net.in_s_channels = 0 if self.cfg.model.mean_aggregation else 1
-            self.cfg.model.net.in_s_channels += self.extra_scalars
-        elif modelname == "LorentzTransformer":
-            self.cfg.model.net.in_s_channels = 0 if self.cfg.model.mean_aggregation else 1
-            self.cfg.model.net.in_s_channels += self.extra_scalars
-        elif modelname == "LorentzNet":
-            self.cfg.model.net.n_scalar = self.extra_scalars
-        elif modelname == "PELICAN":
-            self.cfg.model.net.in_channels_rank1 = self.extra_scalars
-        elif modelname == "PELICANOfficial":
-            self.cfg.model.net.num_scalars = self.extra_scalars
-        elif modelname == "CGENN":
-            # CGENN cant handle zero scalar inputs -> give 1 input with zeros
-            self.cfg.model.net.in_features_h = 1 + self.extra_scalars
+        if modelname in [
+            "LGATr",
+            "LorentzTransformer",
+            "LorentzNet",
+            "PELICAN",
+            "PELICANOfficial",
+            "CGENN",
+        ]:
+            # Lorentz-equivariance by internal representations
+            in_s_channels = self.extra_scalars
+            in_s_channels += get_num_tagging_features(
+                tagging_features=self.cfg.data.tagging_features
+            )
+            if modelname in ["LGATr", "LorentzTransformer"]:
+                self.cfg.model.net.in_s_channels = 0 if self.cfg.model.mean_aggregation else 1
+                self.cfg.model.net.in_s_channels += in_s_channels
+            elif modelname == "LorentzNet":
+                self.cfg.model.net.in_s_channels = in_s_channels
+            elif modelname == "PELICAN":
+                self.cfg.model.net.in_channels_rank1 = in_s_channels
+            elif modelname == "PELICANOfficial":
+                self.cfg.model.net.num_scalars = in_s_channels
+            elif modelname == "CGENN":
+                # CGENN cant handle zero scalar inputs -> give 1 input with zeros
+                self.cfg.model.net.in_features_h = 1 + in_s_channels
         elif modelname in [
             "Transformer",
             "ParticleTransformer",
@@ -46,7 +56,7 @@ class TaggingExperiment(BaseExperiment):
             "ParticleNet",
             "MIParticleTransformer",
         ]:
-            # LLoCa models
+            # Non-equivariant or canonicalization
             self.cfg.model.in_channels = 7 + self.extra_scalars
             if self.cfg.model.add_fourmomenta_backbone:
                 self.cfg.model.in_channels += 4
@@ -61,7 +71,7 @@ class TaggingExperiment(BaseExperiment):
             # decide which entries to use for the framesnet
             if "equivectors" in self.cfg.model.framesnet:
                 num_tagging_features = get_num_tagging_features(
-                    tagging_features=self.cfg.data.tagging_features_framesnet
+                    tagging_features=self.cfg.data.tagging_features
                 )
                 self.cfg.model.framesnet.equivectors.num_scalars = self.extra_scalars
                 self.cfg.model.framesnet.equivectors.num_scalars += num_tagging_features

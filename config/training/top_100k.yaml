@@ -1,0 +1,9 @@
+# Training configuration for 100k params models
+iterations: 200000
+batchsize: 256
+
+weight_decay: 0.1
+lr: 1e-3
+
+defaults:
+ - tag_default

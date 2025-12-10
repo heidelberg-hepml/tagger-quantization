@@ -1,5 +1,5 @@
 data:
- tagging_features_framesnet: all
+ tagging_features: all
  boost_jet: false
  beam_reference: lightlike
  two_beams: true

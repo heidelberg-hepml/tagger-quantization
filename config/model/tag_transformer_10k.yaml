@@ -1,9 +1,9 @@
 net:
  attn_reps: "4x0n+1x1n"
 
- num_blocks: 1
- num_heads: 2
- mlp_factor: 1
+ num_blocks: 2
+ num_heads: 4
+ mlp_factor: 2
 
 defaults:
  - tag_transformer
