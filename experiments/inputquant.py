@@ -3,7 +3,7 @@ from lgatr.layers import EquiLinear
 from lloca.equivectors import MLPVectors
 from lloca.framesnet.equi_frames import LearnedFrames
 from torch import Tensor
-from torch.nn import Linear
+from torch.nn import Linear, Module
 
 from experiments.baselines.lorentztransformer import Linear as LorentzLinear
 
@@ -70,6 +70,7 @@ def input_quantize_module(module, cfg):
         bits=cfg.bits,
         quant_per_channel=cfg.quant_per_channel,
         quantize_output=cfg.quantize_output,
+        quantized_training=cfg.quantized_training,
     )
     for name, child in list(module.named_children()):
         if isinstance(child, Linear):
@@ -106,18 +107,27 @@ def input_quantize_module(module, cfg):
     return module
 
 
-class QuantLayer:
+class QuantLayer(Module):
     def __init__(
         self,
+        *args,
         quantizer: str = "uniform",
         bits: int = 8,
         quant_per_channel: bool = False,
         quantize_output: bool = False,
+        quantized_training: bool = True,
+        **kwargs
     ):
         self.quantizer = get_quantizer(quantizer, bits)
         self.bits = bits
         self.quantize_output = quantize_output
         self.dim = 1 if quant_per_channel else None
+        self.quantized_training = quantized_training
+        super().__init__(*args, **kwargs)
+
+    @property
+    def quantize(self) -> bool:
+        return self.quantized_training or (not self.training)
 
     def ste_quantize(self, input: Tensor) -> Tensor:
         """
@@ -135,7 +145,7 @@ class QuantLayer:
         return output
 
 
-class QuantLinear(Linear, QuantLayer):
+class QuantLinear(QuantLayer, Linear):
     def __init__(
         self,
         *args,
@@ -143,26 +153,29 @@ class QuantLinear(Linear, QuantLayer):
         bits: int = 8,
         quant_per_channel: bool = False,
         quantize_output: bool = True,
+        quantized_training: bool = True,
         **kwargs,
     ):
-        Linear.__init__(self, *args, **kwargs)
-        QuantLayer.__init__(
-            self,
+        super().__init__(
+            *args,
             quantizer=quantizer,
             bits=bits,
             quant_per_channel=quant_per_channel,
             quantize_output=quantize_output,
+            quantized_training=quantized_training,
+            **kwargs,
         )
 
     def forward(self, input: Tensor) -> Tensor:
-        input = QuantLayer.ste_quantize(self, input)
+        if self.quantize:
+            input = QuantLayer.ste_quantize(self, input)
         output = Linear.forward(self, input)
-        if self.quantize_output:
+        if self.quantize_output and self.quantize:
             output = QuantLayer.ste_quantize(self, output)
         return output
 
 
-class QuantEquiLinear(EquiLinear, QuantLayer):
+class QuantEquiLinear(QuantLayer, EquiLinear):
     def __init__(
         self,
         *args,
@@ -170,33 +183,34 @@ class QuantEquiLinear(EquiLinear, QuantLayer):
         bits: int = 8,
         quant_per_channel: bool = False,
         quantize_output: bool = True,
+        quantized_training: bool = True,
         **kwargs,
     ):
-        EquiLinear.__init__(self, *args, **kwargs)
-        assert not quant_per_channel, (
-            "Quantization scale should be shared across channels to preserve equivariance"
-        )
-        QuantLayer.__init__(
+        super().__init__(
             self,
+            *args,
             quantizer=quantizer,
             bits=bits,
             quant_per_channel=quant_per_channel,
             quantize_output=quantize_output,
+            quantized_training=quantized_training,
+            **kwargs,
         )
 
     def forward(self, multivectors: Tensor, scalars: Tensor | None) -> tuple[Tensor, Tensor | None]:
-        multivectors = QuantLayer.ste_quantize(self, multivectors)
-        if scalars is not None:
-            scalars = QuantLayer.ste_quantize(self, scalars)
+        if self.quantize:
+            multivectors = QuantLayer.ste_quantize(self, multivectors)
+            if scalars is not None:
+                scalars = QuantLayer.ste_quantize(self, scalars)
         output_mv, output_s = EquiLinear.forward(self, multivectors, scalars)
-        if self.quantize_output:
+        if self.quantize_output and self.quantize:
             output_mv = QuantLayer.ste_quantize(self, output_mv)
             if output_s is not None:
                 output_s = QuantLayer.ste_quantize(self, output_s)
         return output_mv, output_s
 
 
-class QuantLorentzLinear(LorentzLinear, QuantLayer):
+class QuantLorentzLinear(QuantLayer, LorentzLinear):
     def __init__(
         self,
         *args,
@@ -204,22 +218,26 @@ class QuantLorentzLinear(LorentzLinear, QuantLayer):
         bits: int = 8,
         quant_per_channel: bool = False,
         quantize_output: bool = True,
+        quantized_training: bool = True,
         **kwargs,
     ):
-        LorentzLinear.__init__(self, *args, **kwargs)
-        QuantLayer.__init__(
+        super().__init__(
             self,
+            *args,
             quantizer=quantizer,
             bits=bits,
             quant_per_channel=quant_per_channel,
             quantize_output=quantize_output,
+            quantized_training=quantized_training,
+            **kwargs,
         )
 
     def forward(self, vectors: Tensor, scalars: Tensor) -> tuple[Tensor, Tensor]:
-        vectors = QuantLayer.ste_quantize(self, vectors)
-        scalars = QuantLayer.ste_quantize(self, scalars)
+        if self.quantize:
+            vectors = QuantLayer.ste_quantize(self, vectors)
+            scalars = QuantLayer.ste_quantize(self, scalars)
         vectors_out, scalars_out = LorentzLinear.forward(self, vectors, scalars)
-        if self.quantize_output:
+        if self.quantize_output and self.quantize:
             vectors_out = QuantLayer.ste_quantize(self, vectors_out)
             scalars_out = QuantLayer.ste_quantize(self, scalars_out)
         return vectors_out, scalars_out

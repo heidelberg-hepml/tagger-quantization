@@ -37,6 +37,7 @@ inputquant:
  quantizer: float
  quant_per_channel: false
  quantize_output: true
+ quantized_training: true
 
  mlp: true
  attn: true
