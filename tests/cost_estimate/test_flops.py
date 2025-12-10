@@ -153,7 +153,7 @@ def test_lgatr(seqlen, hidden_mv_channels, hidden_s_channels, mlp_ratio, attn_ra
     ],
 )
 @pytest.mark.parametrize("mlp_ratio,attn_ratio", [(1, 1), (4, 1), (2, 2), (2, 1)])
-def test_lotr(seqlen, hidden_v_channels, hidden_s_channels, mlp_ratio, attn_ratio):
+def test_slim(seqlen, hidden_v_channels, hidden_s_channels, mlp_ratio, attn_ratio):
     arch_kwargs = {
         "blocks": 1,
         "seqlen": seqlen,
@@ -166,7 +166,7 @@ def test_lotr(seqlen, hidden_v_channels, hidden_s_channels, mlp_ratio, attn_rati
     # create experiment environment
     with hydra.initialize(config_path="../../config", version_base=None):
         overrides = [
-            "model=tag_lotr",
+            "model=tag_slim",
             "save=false",
             "training.batchsize=1",
             "data.dataset=mini",

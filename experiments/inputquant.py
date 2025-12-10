@@ -5,14 +5,14 @@ from lloca.framesnet.equi_frames import LearnedFrames
 from torch import Tensor
 from torch.nn import Linear
 
-from experiments.baselines.lorentztransformer import Linear as LorentzLinear
+from experiments.baselines.lgatr_slim import Linear as LorentzLinear
 
 from .parq import get_quantizer
 
 
 def input_quantize(model, modelname, cfg_inputs):
     # Replace linear layers by linear layers with input quantization inplace
-    if modelname in ["Transformer", "LGATr", "LorentzTransformer"]:
+    if modelname in ["Transformer", "LGATr", "LGATrSlim"]:
         input_quantize_transformer(model, cfg_inputs)
     elif modelname == "ParticleTransformer":
         input_quantize_ParT(model, cfg_inputs)

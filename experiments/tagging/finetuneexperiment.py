@@ -6,7 +6,7 @@ from lgatr.layers.linear import EquiLinear
 from omegaconf import OmegaConf, open_dict
 from torch_ema import ExponentialMovingAverage
 
-from experiments.baselines.lorentztransformer import Linear as LorentzLinear
+from experiments.baselines.lgatr_slim import Linear as LorentzLinear
 from experiments.logger import LOGGER
 from experiments.tagging.experiment import TopTaggingExperiment
 
@@ -42,7 +42,7 @@ class TopTaggingFineTuneExperiment(TopTaggingExperiment):
             "experiments.tagging.wrappers.TransformerWrapper",
             "experiments.tagging.wrappers.ParTWrapper",
             "experiments.tagging.wrappers.LGATrWrapper",
-            "experiments.tagging.wrappers.LoTrWrapper",
+            "experiments.tagging.wrappers.LGATrSlimWrapper",
         ]:
             raise NotImplementedError
 
@@ -109,7 +109,7 @@ class TopTaggingFineTuneExperiment(TopTaggingExperiment):
                 in_s_channels=self.cfg.model.net.hidden_s_channels,
                 out_s_channels=self.cfg.model.net.out_s_channels,
             ).to(self.device)
-        elif self.warmstart_cfg.model._target_ == "experiments.tagging.wrappers.LoTrWrapper":
+        elif self.warmstart_cfg.model._target_ == "experiments.tagging.wrappers.LGATrSlimWrapper":
             self.model.net.linear_out = LorentzLinear(
                 in_v_channels=self.cfg.model.net.hidden_v_channels,
                 out_v_channels=self.cfg.model.net.out_v_channels,
@@ -206,7 +206,7 @@ class TopTaggingFineTuneExperiment(TopTaggingExperiment):
             ]
         elif self.warmstart_cfg.model._target_ in [
             "experiments.tagging.wrappers.LGATrWrapper",
-            "experiments.tagging.wrappers.LoTrWrapper",
+            "experiments.tagging.wrappers.LGATrSlimWrapper",
         ]:
             # collect parameter lists
             params_backbone = list(self.model.net.linear_in.parameters()) + list(

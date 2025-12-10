@@ -28,16 +28,16 @@ Download [JetClass dataset](https://zenodo.org/records/6619768) and link it in `
 Table 1: Standard top tagging
 ```bash
 # Standard L-GATr-slim
-python run.py -cp config model=tag_lotr training=top_lotr
+python run.py -cp config model=tag_slim training=top_slim
 
 # Pretraining + finetuning L-GATr-slim
-python run.py -cp config -cn jctagging model=tag_lotr training=jc_transformer data.features=fourmomenta exp_name=pretrain run_name=lgatr-slim-pretrain
-python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/lgatr-slim-pretrain training=top_lotr
+python run.py -cp config -cn jctagging model=tag_slim training=jc_transformer data.features=fourmomenta exp_name=pretrain run_name=slim-pretrain
+python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/slim-pretrain training=top_slim
 ```
 
 Table 2: Standard JetClass
 ```bash
-python run.py -cp config -cn jctagging model=tag_lotr training=jc_ParT
+python run.py -cp config -cn jctagging model=tag_slim training=jc_ParT
 python run.py -cp config -cn jctagging model=tag_transformer model/framesnet=learnedpd training=jc_ParT # updated compared to https://arxiv.org/abs/2508.14898
 ```
 
@@ -45,7 +45,7 @@ Table 3: Amplitude regression
 
 Run this code in the [lloca-experiments repo](github.com/heidelberg-hepml/lloca-experiments).
 ```bash
-python run.py -cp config -cn amplitudesxl model=amp_lotr
+python run.py -cp config -cn amplitudesxl model=amp_slim
 ```
 
 Figure 2: Event generation
@@ -53,21 +53,21 @@ Figure 2: Event generation
 Run this code in the [lloca-experiments repo](github.com/heidelberg-hepml/lloca-experiments).
 ```bash
 # scaling with training dataset size
-python run.py -cp config -cn ttbar model=eg_lotr data.train_test_val=[0.5,0.2,0.1]
-python run.py -cp config -cn ttbar model=eg_lotr data.train_test_val=[0.2,0.2,0.1]
-python run.py -cp config -cn ttbar model=eg_lotr data.train_test_val=[0.05,0.2,0.1]
-python run.py -cp config -cn ttbar model=eg_lotr data.train_test_val=[0.02,0.2,0.1]
-python run.py -cp config -cn ttbar model=eg_lotr data.train_test_val=[0.005,0.2,0.1]
-python run.py -cp config -cn ttbar model=eg_lotr data.train_test_val=[0.002,0.2,0.1]
-python run.py -cp config -cn ttbar model=eg_lotr data.train_test_val=[0.0005,0.2,0.1]
-python run.py -cp config -cn ttbar model=eg_lotr data.train_test_val=[0.0002,0.2,0.1]
+python run.py -cp config -cn ttbar model=eg_slim data.train_test_val=[0.5,0.2,0.1]
+python run.py -cp config -cn ttbar model=eg_slim data.train_test_val=[0.2,0.2,0.1]
+python run.py -cp config -cn ttbar model=eg_slim data.train_test_val=[0.05,0.2,0.1]
+python run.py -cp config -cn ttbar model=eg_slim data.train_test_val=[0.02,0.2,0.1]
+python run.py -cp config -cn ttbar model=eg_slim data.train_test_val=[0.005,0.2,0.1]
+python run.py -cp config -cn ttbar model=eg_slim data.train_test_val=[0.002,0.2,0.1]
+python run.py -cp config -cn ttbar model=eg_slim data.train_test_val=[0.0005,0.2,0.1]
+python run.py -cp config -cn ttbar model=eg_slim data.train_test_val=[0.0002,0.2,0.1]
 
 # scaling with multiplicity
-python run.py -cp config -cn ttbar model=eg_lotr data.n_jets=0
-python run.py -cp config -cn ttbar model=eg_lotr data.n_jets=1
-python run.py -cp config -cn ttbar model=eg_lotr data.n_jets=2
-python run.py -cp config -cn ttbar model=eg_lotr data.n_jets=3
-python run.py -cp config -cn ttbar model=eg_lotr data.n_jets=4
+python run.py -cp config -cn ttbar model=eg_slim data.n_jets=0
+python run.py -cp config -cn ttbar model=eg_slim data.n_jets=1
+python run.py -cp config -cn ttbar model=eg_slim data.n_jets=2
+python run.py -cp config -cn ttbar model=eg_slim data.n_jets=3
+python run.py -cp config -cn ttbar model=eg_slim data.n_jets=4
 ```
 
 Figure 3: Scaling to small top taggers
@@ -82,10 +82,10 @@ python run.py -cp config model=tag_transformer_10k training=top_10k model/frames
 python run.py -cp config model=tag_transformer_100k training=top_100k model/framesnet=learnedpd model/framesnet/equivectors=equimlp_100k
 python run.py -cp config model=tag_transformer training=top_transformer model/framesnet=learnedpd
 
-python run.py -cp config model=tag_lotr_1k training=top_1k
-python run.py -cp config model=tag_lotr_10k training=top_10k
-python run.py -cp config model=tag_lotr_100k training=top_100k
-python run.py -cp config model=tag_lotr training=top_lotr
+python run.py -cp config model=tag_slim_1k training=top_1k
+python run.py -cp config model=tag_slim_10k training=top_10k
+python run.py -cp config model=tag_slim_100k training=top_100k
+python run.py -cp config model=tag_slim training=top_slim
 
 python run.py -cp config model=tag_ParT_10k training=top_10k
 python run.py -cp config model=tag_ParT_100k training=top_100k
@@ -99,20 +99,20 @@ Table 5: Landscape of fp8+QAT top taggers
 # PARQ
 python run.py -cp config model=tag_transformer training=top_transformer training.scheduler=CosineAnnealingLR weightquant.use=true inputquant.use=true model.use_amp=true
 python run.py -cp config model=tag_transformer model/framesnet=learnedpd model/framesnet/equivectors=equimlp training=top_transformer training.scheduler=CosineAnnealingLR weightquant.use=true inputquant.use=true model.use_amp=true
-python run.py -cp config model=tag_lotr training=top_lotr weightquant.use=true inputquant.use=true model.use_amp=true
+python run.py -cp config model=tag_slim training=top_slim weightquant.use=true inputquant.use=true model.use_amp=true
 python run.py -cp config model=tag_ParT training=top_ParT weightquant.use=true inputquant.use=true model.use_amp=true
 # STE: add weightquant.prox_map=hard to the PARQ commands
 
 # pretraining + finetuning
 # no quantization (same as in Table 1)
-python run.py -cp config -cn jctagging model=tag_lotr training=jc_transformer data.features=fourmomenta exp_name=pretrain run_name=lgatr-slim-pretrain
-python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/lgatr-slim-pretrain training=top_lotr exp_name=finetune run_name=lgatr-slim-finetune
+python run.py -cp config -cn jctagging model=tag_slim training=jc_transformer data.features=fourmomenta exp_name=pretrain run_name=slim-pretrain
+python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/slim-pretrain training=top_slim exp_name=finetune run_name=slim-finetune
 # STE
-python run.py -cp config -cn jctagging model=tag_lotr training=jc_transformer data.features=fourmomenta weightquant.use=true inputquant.use=true model.use_amp=true exp_name=pretrain run_name=lgatr-slim-pretrain-fp8-STE
-python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/lgatr-slim-pretrain training=top_lotr model.use_amp=true inputquant.use=true weightquant.use=true weightquant.prox_map=hard
+python run.py -cp config -cn jctagging model=tag_slim training=jc_transformer data.features=fourmomenta weightquant.use=true inputquant.use=true model.use_amp=true exp_name=pretrain run_name=slim-pretrain-fp8-STE
+python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/slim-pretrain training=top_slim model.use_amp=true inputquant.use=true weightquant.use=true weightquant.prox_map=hard
 # PARQ
-python run.py -cp config -cn jctagging model=tag_lotr training=jc_transformer data.features=fourmomenta model.use_amp=true inputquant.use=true exp_name=pretrain run_name=lgatr-slim-pretrain-fp8-PARQ
-python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/lgatr-slim-pretrain training=top_lotr model.use_amp=true inputquant.use=true weightquant.use=true
+python run.py -cp config -cn jctagging model=tag_slim training=jc_transformer data.features=fourmomenta model.use_amp=true inputquant.use=true exp_name=pretrain run_name=slim-pretrain-fp8-PARQ
+python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/slim-pretrain training=top_slim model.use_amp=true inputquant.use=true weightquant.use=true
 ```
 
 Figure 7:
@@ -125,7 +125,7 @@ python run.py -cp config model=tag_transformer training=top_transformer training
 # Repeat the four quantization levels for each network
 # with training.scheduler=CosineAnnealingLR for tag_transformer and fp8+QAT
 python run.py -cp config model=tag_transformer model/framesnet=learnedpd training=top_transformer
-python run.py -cp config model=tag_lotr training=top_lotr
+python run.py -cp config model=tag_slim training=top_slim
 python run.py -cp config model=tag_lgatr training=top_lgatr
 python run.py -cp config model=tag_ParT training=tag_ParT
 ```

@@ -8,7 +8,7 @@ ARCHS = [
     "particletransformer",
     "llocatransformer",
     "llocatransformer-global",
-    "lorentztransformer",
+    "lgatr-slim",
     "lgatr",
 ]
 BITS = [
@@ -55,10 +55,8 @@ def get_arch_kwargs(arch):
             layers_framesnet=2,
             is_global=True,
         )
-    elif arch == "lorentztransformer":
-        return "lorentztransformer", dict(
-            blocks=1, channels_v=1, channels_s=16, mlp_ratio=1, attn_ratio=1
-        )
+    elif arch == "lgatr-slim":
+        return "lgatr-slim", dict(blocks=1, channels_v=1, channels_s=16, mlp_ratio=1, attn_ratio=1)
     elif arch == "lgatr":
         return "lgatr", dict(blocks=1, channels_mv=3, channels_s=8, mlp_ratio=1, attn_ratio=1)
     else:

@@ -264,7 +264,7 @@ def lgatr_cost(
     return cost
 
 
-def lotr_linear_cost(ch1_v, ch2_v, ch1_s, ch2_s, factor, factor_bias):
+def lgatrslim_linear_cost(ch1_v, ch2_v, ch1_s, ch2_s, factor, factor_bias):
     cost_s2s = ch1_s * ch2_s * factor
     cost_s2s_bias = ch2_s * factor_bias
     # - factor 4 for 4 components of vector
@@ -274,7 +274,7 @@ def lotr_linear_cost(ch1_v, ch2_v, ch1_s, ch2_s, factor, factor_bias):
     return cost
 
 
-def lorentztransformer_cost(
+def lgatrslim_cost(
     blocks,
     seqlen,
     channels_v,
@@ -290,7 +290,7 @@ def lorentztransformer_cost(
     seqlen += 4
 
     # attention projections
-    cost_attnproj = lotr_linear_cost(
+    cost_attnproj = lgatrslim_linear_cost(
         ch1_v=channels_v,
         ch2_v=channels_v * attn_ratio,
         ch1_s=channels_s,
@@ -312,7 +312,7 @@ def lorentztransformer_cost(
     cost_attn = cost_attn_QK + cost_attn_AV + cost_attn_norm
 
     # MLP projections
-    cost_in = lotr_linear_cost(
+    cost_in = lgatrslim_linear_cost(
         ch1_v=channels_v,
         ch2_v=3 * channels_v * mlp_ratio,
         ch1_s=channels_s,
@@ -321,7 +321,7 @@ def lorentztransformer_cost(
         factor_bias=factor_aa,
     )
     # neglect inner products (attention will dominate)
-    cost_out = lotr_linear_cost(
+    cost_out = lgatrslim_linear_cost(
         ch1_v=channels_v * mlp_ratio,
         ch2_v=channels_v,
         ch1_s=channels_s * mlp_ratio,
@@ -350,8 +350,8 @@ def get_cost_func(architecture):
         return lgatr_cost
     elif architecture == "particletransformer":
         return particletransformer_cost
-    elif architecture == "lorentztransformer":
-        return lorentztransformer_cost
+    elif architecture == "lgatr-slim":
+        return lgatrslim_cost
     else:
         raise ValueError(f"Unknown architecture: {architecture}")
 

@@ -26,7 +26,7 @@ class TaggingExperiment(BaseExperiment):
         self.cfg.model.out_channels = self.num_outputs
         if modelname in [
             "LGATr",
-            "LorentzTransformer",
+            "LGATrSlim",
             "LorentzNet",
             "PELICAN",
             "PELICANOfficial",
@@ -37,7 +37,7 @@ class TaggingExperiment(BaseExperiment):
             in_s_channels += get_num_tagging_features(
                 tagging_features=self.cfg.data.tagging_features
             )
-            if modelname in ["LGATr", "LorentzTransformer"]:
+            if modelname in ["LGATr", "LGATrSlim"]:
                 self.cfg.model.net.in_s_channels = 0 if self.cfg.model.mean_aggregation else 1
                 self.cfg.model.net.in_s_channels += in_s_channels
             elif modelname == "LorentzNet":

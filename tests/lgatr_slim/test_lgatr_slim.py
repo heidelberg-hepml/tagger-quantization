@@ -1,14 +1,14 @@
 import pytest
 import torch
 
-from experiments.baselines.lorentztransformer import (
+from experiments.baselines.lgatr_slim import (
     MLP,
     Attention,
     Dropout,
     GatedLinearUnit,
+    LGATrSlim,
+    LGATrSlimBlock,
     Linear,
-    LorentzTransformer,
-    LorentzTransformerBlock,
     RMSNorm,
     squared_norm,
 )
@@ -205,14 +205,14 @@ def test_MLP_equivariance(batch_dims, v_channels, s_channels, mlp_ratio, num_lay
 @pytest.mark.parametrize("batch_dims", BATCH_DIMS)
 @pytest.mark.parametrize("v_channels,s_channels,num_heads", [(32, 4, 1), (16, 8, 4)])
 @pytest.mark.parametrize("dropout_prob", [None, 0.0, 0.5])
-def test_LorentzTransformerBlock_equivariance(
+def test_LGATrSlimBlock_equivariance(
     batch_dims,
     v_channels,
     s_channels,
     num_heads,
     dropout_prob,
 ):
-    layer = LorentzTransformerBlock(
+    layer = LGATrSlimBlock(
         v_channels=v_channels,
         s_channels=s_channels,
         num_heads=num_heads,
@@ -239,7 +239,7 @@ def test_LorentzTransformerBlock_equivariance(
 @pytest.mark.parametrize("hidden_v_channels,hidden_s_channels,num_heads", [(32, 4, 1), (16, 8, 4)])
 @pytest.mark.parametrize("dropout_prob", [None, 0.0, 0.5])
 @pytest.mark.parametrize("num_blocks", [1, 2])
-def test_LorentzTransformer_equivariance(
+def test_LGATrSlim_equivariance(
     batch_dims,
     in_v_channels,
     in_s_channels,
@@ -251,7 +251,7 @@ def test_LorentzTransformer_equivariance(
     num_blocks,
     dropout_prob,
 ):
-    layer = LorentzTransformer(
+    layer = LGATrSlim(
         in_v_channels=in_v_channels,
         out_v_channels=out_v_channels,
         hidden_v_channels=hidden_v_channels,

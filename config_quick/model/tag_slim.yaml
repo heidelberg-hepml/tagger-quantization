@@ -1,11 +1,11 @@
-_target_: experiments.tagging.wrappers.LoTrWrapper
+_target_: experiments.tagging.wrappers.LGATrSlimWrapper
 mean_aggregation: false
 out_channels: null
 use_amp: false
 attention_backend: xformers
 
 net:
- _target_: experiments.baselines.lorentztransformer.LorentzTransformer
+ _target_: experiments.baselines.lgatr_slim.LGATrSlim
  _partial_: true
 
  in_v_channels: 1

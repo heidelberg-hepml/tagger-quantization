@@ -31,7 +31,7 @@
     "float16,ternary": 44910592,
     "float8,ternary": 33059072
   },
-  "lorentztransformer": {
+  "lgatr-slim": {
     "float32,float32": 244850688,
     "float16,float16": 73654272,
     "float8,float8": 53250048,

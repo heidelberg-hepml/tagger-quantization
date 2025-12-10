@@ -11,7 +11,7 @@ from experiments.tagging.experiment import TopTaggingExperiment
         ["model=tag_transformer"],
         ["model=tag_ParT"],
         ["model=tag_lgatr"],
-        ["model=tag_lotr"],
+        ["model=tag_slim"],
     ],
 )
 @pytest.mark.parametrize(
