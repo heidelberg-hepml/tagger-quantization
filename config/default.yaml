@@ -54,6 +54,7 @@ train: true
 evaluate: true
 evaluation:
  batchsize: 1024
+ eval_quantized: false
 
 plot: true
 plotting:
