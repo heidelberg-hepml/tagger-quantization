@@ -7,6 +7,7 @@ from pathlib import Path
 
 import mlflow
 import numpy as np
+from parq.optim.parq import normalized_mirror_sigmoid
 import pytorch_optimizer
 import torch
 import torch.distributed as dist
@@ -538,6 +539,9 @@ class BaseExperiment:
         self.train_metrics = self._init_metrics()
         self.val_metrics = self._init_metrics()
 
+        if self.cfg.weightquant.use and self.cfg.weightquant.prox_map == "parq":
+            self.parq_schedule = []
+
         if self.cfg.evaluation.eval_quantized:
             self.val_loss_quantized = []
             self.val_metrics_quantized = self._init_metrics()
@@ -755,6 +759,16 @@ class BaseExperiment:
             metrics[key] = value.cpu().item()
         for key, value in metrics.items():
             self.train_metrics[key].append(value)
+
+        if self.cfg.weightquant.use and self.cfg.weightquant.prox_map == "parq":
+            inv_slope = normalized_mirror_sigmoid(
+                step,
+                self.optimizer.prox_map.anneal_start,
+                self.optimizer.prox_map.anneal_end,
+                self.optimizer.prox_map.steepness,
+                self.optimizer.prox_map.anneal_center,
+            )
+            self.parq_schedule.append(inv_slope)
 
         # log to mlflow
         if (
