@@ -7,4 +7,4 @@ net:
  attn_ratio: 2
 
 defaults:
- - tag_lotr
+ - tag_slim
