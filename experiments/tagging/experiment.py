@@ -336,7 +336,11 @@ class TaggingExperiment(BaseExperiment):
             plot_dict["grad_norm_net"] = torch.stack(self.grad_norm_net).cpu()
             for key, value in self.train_metrics.items():
                 plot_dict[key] = value
-            if self.cfg.weightquant.use and self.cfg.weightquant.prox_map == "parq" and self.cfg.plotting.parq_schedule:
+            if (
+                self.cfg.weightquant.use
+                and self.cfg.weightquant.prox_map == "parq"
+                and self.cfg.plotting.parq_schedule
+            ):
                 plot_dict["parq_schedule"] = self.parq_schedule
         plot_mixer(self.cfg, plot_path, title, plot_dict)
 

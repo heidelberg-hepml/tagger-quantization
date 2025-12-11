@@ -7,12 +7,12 @@ from pathlib import Path
 
 import mlflow
 import numpy as np
-from parq.optim.parq import normalized_mirror_sigmoid
 import pytorch_optimizer
 import torch
 import torch.distributed as dist
 from hydra.utils import instantiate
 from omegaconf import OmegaConf, errors, open_dict
+from parq.optim.parq import normalized_mirror_sigmoid
 from torch.cuda.amp import GradScaler
 from torch_ema import ExponentialMovingAverage
 

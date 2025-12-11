@@ -116,7 +116,7 @@ class QuantLayer(Module):
         quant_per_channel: bool = False,
         quantize_output: bool = False,
         quantized_training: bool = True,
-        **kwargs
+        **kwargs,
     ):
         self.quantizer = get_quantizer(quantizer, bits)
         self.bits = bits
