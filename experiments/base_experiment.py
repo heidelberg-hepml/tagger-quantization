@@ -867,7 +867,7 @@ class BaseExperiment:
             filename = f"model_run{self.cfg.run_idx}.pt"
         model_path = os.path.join(self.cfg.run_dir, "models", filename)
 
-        if self.cfg.weightquant.use:
+        if self.cfg.weightquant.use and self.cfg.weightquant.prox_map == "naive":
             quantize_model(self.model, self.cfg)
         LOGGER.debug(f"Saving model at {model_path}")
         torch.save(
