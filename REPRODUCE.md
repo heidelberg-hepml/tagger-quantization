@@ -127,7 +127,7 @@ python run.py -cp config model=tag_transformer training=top_transformer training
 python run.py -cp config model=tag_transformer model/framesnet=learnedpd training=top_transformer
 python run.py -cp config model=tag_slim training=top_slim
 python run.py -cp config model=tag_lgatr training=top_lgatr
-python run.py -cp config model=tag_ParT training=tag_ParT
+python run.py -cp config model=tag_ParT training=top_ParT
 ```
 
 Figure 8
