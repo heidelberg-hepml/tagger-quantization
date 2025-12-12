@@ -6,6 +6,7 @@ data:
  add_time_reference: true
  mass_reg: 5e-3
  spurion_scale: 1
+ max_particles: null
  momentum_float64: true
 
 evaluation:
