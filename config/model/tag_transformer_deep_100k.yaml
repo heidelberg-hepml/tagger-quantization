@@ -1,0 +1,6 @@
+net:
+ attn_reps: "4x0n+1x1n"
+ num_heads: 4
+
+defaults:
+ - tag_transformer

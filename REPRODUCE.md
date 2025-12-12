@@ -82,6 +82,11 @@ python run.py -cp config model=tag_transformer_10k training=top_10k model/frames
 python run.py -cp config model=tag_transformer_100k training=top_100k model/framesnet=learnedpd model/framesnet/equivectors=equimlp_100k
 python run.py -cp config model=tag_transformer training=top_transformer model/framesnet=learnedpd
 
+python run.py -cp config model=tag_transformer_1k training=top_1k model/framesnet=learnedpd model/framesnet/equivectors=equimlp_1k model.framesnet.is_global=true
+python run.py -cp config model=tag_transformer_10k training=top_10k model/framesnet=learnedpd model/framesnet/equivectors=equimlp_10k model.framesnet.is_global=true
+python run.py -cp config model=tag_transformer_100k training=top_100k model/framesnet=learnedpd model/framesnet/equivectors=equimlp_100k model.framesnet.is_global=true
+python run.py -cp config model=tag_transformer training=top_transformer model/framesnet=learnedpd model.framesnet.is_global=true
+
 python run.py -cp config model=tag_slim_1k training=top_1k
 python run.py -cp config model=tag_slim_10k training=top_10k
 python run.py -cp config model=tag_slim_100k training=top_100k
@@ -90,6 +95,10 @@ python run.py -cp config model=tag_slim training=top_slim
 python run.py -cp config model=tag_ParT_10k training=top_10k
 python run.py -cp config model=tag_ParT_100k training=top_100k
 python run.py -cp config model=tag_ParT training=top_ParT
+
+# Repeat with model=tag_X_deep_1k for right plot
+python run.py -cp config model=tag_transformer_deep_1k training=top_1k
+# and so on...
 ```
 
 Table 5: Landscape of fp8+QAT top taggers
