@@ -1,0 +1,7 @@
+net:
+ attn_reps: "1x1n"
+ num_heads: 1
+ mlp_factor: 1
+
+defaults:
+ - tag_transformer

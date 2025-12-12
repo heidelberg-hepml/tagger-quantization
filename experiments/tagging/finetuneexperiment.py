@@ -3,10 +3,10 @@ import os
 import torch
 from hydra.core.hydra_config import HydraConfig
 from lgatr.layers.linear import EquiLinear
+from lgatr.nets.lgatr_slim import Linear as LorentzLinear
 from omegaconf import OmegaConf, open_dict
 from torch_ema import ExponentialMovingAverage
 
-from experiments.baselines.lgatr_slim import Linear as LorentzLinear
 from experiments.logger import LOGGER
 from experiments.tagging.experiment import TopTaggingExperiment
 

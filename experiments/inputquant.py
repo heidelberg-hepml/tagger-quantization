@@ -1,11 +1,10 @@
 import torch
 from lgatr.layers import EquiLinear
+from lgatr.nets.lgatr_slim import Linear as LorentzLinear
 from lloca.equivectors import MLPVectors
 from lloca.framesnet.equi_frames import LearnedFrames
 from torch import Tensor
 from torch.nn import Linear
-
-from experiments.baselines.lgatr_slim import Linear as LorentzLinear
 
 from .parq import get_quantizer
 

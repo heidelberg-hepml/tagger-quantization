@@ -1,0 +1,8 @@
+net:
+ attn_reps: 4x0n+1x1n
+ num_heads: 1
+ embed_dims: [8,16,8]
+ pair_embed_dims: [4,4,4]
+
+defaults:
+ - tag_ParT

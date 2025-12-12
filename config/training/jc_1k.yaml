@@ -1,0 +1,6 @@
+iterations: 500000
+batchsize: 1024
+lr: 1e-3
+
+defaults:
+ - jc_transformer
