@@ -14,10 +14,10 @@ venv/
 runs/
 mlruns/
 outputs/
-scripts/
 data/jetclass/
 *~
 *.hdf5
 *.npy
 *.npz
 *.ipynb_checkpoint*
+notebooks/*.pdf
