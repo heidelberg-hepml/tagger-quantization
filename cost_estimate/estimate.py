@@ -100,19 +100,19 @@ def llocatransformer_cost(
     cost_framesnet_in = linear_cost(
         dim_1=15,
         dim_2=channels_framesnet,
-        factor=factor_aw,
+        factor=factor_aa,
         factor_bias=factor_aa,
     )
     cost_framesnet_out = linear_cost(
         dim_1=channels_framesnet,
         dim_2=3,
-        factor=factor_aw,
+        factor=factor_aa,
         factor_bias=factor_aa,
     )
     cost_framesnet_middle = linear_cost(
         dim_1=channels_framesnet,
         dim_2=channels_framesnet,
-        factor=factor_aw,
+        factor=factor_aa,
         factor_bias=factor_aa,
     )
     cost_framesnet_middle *= layers_framesnet - 1
