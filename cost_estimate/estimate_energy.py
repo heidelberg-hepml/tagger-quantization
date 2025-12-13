@@ -8,42 +8,34 @@ ARCHNAMES = [
     "particletransformer",
     "llocatransformer",
     "lgatr-slim",
-    "lgatr",
 ]
 DTYPES = [
     ("float32", "float32"),
     ("float16", "float16"),
     ("float8", "float8"),
-    ("int8", "int8"),
-    ("float32", "ternary"),
-    ("float16", "ternary"),
     ("float8", "ternary"),
+    ("int8", "int8"),
     ("int8", "ternary"),
 ]
 
 
 def get_arch_kwargs(arch):
     if arch == "transformer":
-        return "transformer", dict(blocks=12, channels=128, mlp_ratio=4, attn_ratio=1)
+        return "transformer", dict(blocks=10, channels=128, mlp_ratio=4)
     elif arch == "particletransformer":
         return "particletransformer", dict(
-            blocks=12, channels=128, channels_pair=64, layers_pair=3, mlp_ratio=4, attn_ratio=1
+            blocks=12, channels=128, channels_pair=64, layers_pair=3, mlp_ratio=4
         )
     elif arch == "llocatransformer":
         return "llocatransformer", dict(
-            blocks=12,
+            blocks=10,
             channels=128,
             mlp_ratio=4,
-            attn_ratio=1,
-            channels_framesnet=128,
+            channels_framesnet=32,
             layers_framesnet=2,
         )
     elif arch == "lgatr-slim":
-        return "lgatr-slim", dict(
-            blocks=12, channels_v=32, channels_s=96, mlp_ratio=4, attn_ratio=1
-        )
-    elif arch == "lgatr":
-        return "lgatr", dict(blocks=12, channels_mv=16, channels_s=32, mlp_ratio=2, attn_ratio=2)
+        return "lgatr-slim", dict(blocks=12, channels_v=32, channels_s=96, mlp_ratio=4)
     else:
         raise ValueError(f"Unknown architecture: {arch}")
 

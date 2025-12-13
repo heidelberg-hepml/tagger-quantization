@@ -5,42 +5,32 @@ from cost_estimate.estimate import estimate_bitops, estimate_flops
 SEQLEN = 50
 ARCHS = [
     "transformer",
-    "particletransformer",
     "llocatransformer",
     "llocatransformer-global",
-    "lgatr-slim",
-    "lgatr",
 ]
 BITS = [
     (32, 32),
     (16, 16),
     (8, 8),
-    (32, 2),
-    (16, 2),
-    (8, 2),
+    (8, 1.58),
 ]
 
 MAP = {
     32: "float32",
     16: "float16",
     8: "float8",
-    2: "ternary",
+    1.58: "ternary",
 }
 
 
 def get_arch_kwargs(arch):
     if arch == "transformer":
-        return "transformer", dict(blocks=1, channels=16, mlp_ratio=1, attn_ratio=1)
-    elif arch == "particletransformer":
-        return "particletransformer", dict(
-            blocks=2, channels=8, channels_pair=4, layers_pair=3, mlp_ratio=4, attn_ratio=1
-        )
+        return "transformer", dict(blocks=1, channels=16, mlp_ratio=1)
     elif arch == "llocatransformer":
         return "llocatransformer", dict(
             blocks=1,
             channels=16,
             mlp_ratio=1,
-            attn_ratio=1,
             channels_framesnet=4,
             layers_framesnet=2,
             is_global=False,
@@ -50,15 +40,10 @@ def get_arch_kwargs(arch):
             blocks=1,
             channels=16,
             mlp_ratio=1,
-            attn_ratio=1,
             channels_framesnet=4,
             layers_framesnet=2,
             is_global=True,
         )
-    elif arch == "lgatr-slim":
-        return "lgatr-slim", dict(blocks=1, channels_v=1, channels_s=16, mlp_ratio=1, attn_ratio=1)
-    elif arch == "lgatr":
-        return "lgatr", dict(blocks=1, channels_mv=3, channels_s=8, mlp_ratio=1, attn_ratio=1)
     else:
         raise ValueError(f"Unknown architecture: {arch}")
 
