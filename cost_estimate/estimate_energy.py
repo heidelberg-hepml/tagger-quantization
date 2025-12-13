@@ -58,7 +58,7 @@ def main(save=True):
         for dtype_a, dtype_w in DTYPES:
             dtype_default = dtype_a if dtype_a == "float32" else "float16"
             results_subsub = []
-            for mode in ["literature", "A100-estimate", "H100-estimate"]:
+            for mode in ["Horowitz", "A100-estimate", "H100-estimate"]:
                 energy = estimate_energy(
                     arch,
                     arch_kwargs,
