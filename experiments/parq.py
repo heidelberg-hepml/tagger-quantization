@@ -72,7 +72,9 @@ def init_parq_optimizer(base_optimizer, cfg):
 def init_parq_param_groups(model, cfg, modelname, param_groups=None):
     if modelname in ["Transformer", "LGATr", "LGATrSlim"]:
         # Transformer and LGATr use the same high-level module syntax
-        assert param_groups is None  # not manually specified for these models
+        assert (
+            hasattr(cfg, "finetune") or param_groups is None
+        )  # not manually specified for these models
         param_groups = init_param_groups_transformer(model, cfg)
     elif modelname == "ParticleTransformer":
         # params_groups is given, but we have to do it again including the quantization split
@@ -114,7 +116,8 @@ def init_param_groups_framesnet(framesnet):
 
 def init_param_groups_transformer(model, cfg):
     # collect parameters in groups
-    params_inout = list(model.net.linear_in.parameters()) + list(model.net.linear_out.parameters())
+    params_in = list(model.net.linear_in.parameters())
+    params_out = list(model.net.linear_out.parameters())
     params_attn = []
     params_mlp = []
     for block in model.net.blocks:
@@ -132,7 +135,8 @@ def init_param_groups_transformer(model, cfg):
     return param_groups_transformer_helper(
         params_framesnet,
         params_framesnet_inout,
-        params_inout,
+        params_in,
+        params_out,
         params_attn,
         params_mlp,
         params_noq,
@@ -147,7 +151,7 @@ def init_param_groups_ParticleTransformer(model, cfg):
     # or in other words, weight_decay only for weight matrices in linear layers
 
     # collect parameters in groups
-    params_inout = []
+    params_in = []
     params_attn = []
     params_mlp = []
     params_noq = [model.net.cls_token] + list(model.net.norm.parameters())
@@ -156,12 +160,12 @@ def init_param_groups_ParticleTransformer(model, cfg):
 
     for i, m in enumerate(model.net.embed.embed):
         if i <= 3:
-            params_inout += list(m.parameters())
+            params_in += list(m.parameters())
         else:
             params_mlp += list(m.parameters())
-    params_inout += list(model.net.embed.input_bn.parameters())
-    params_inout += list(model.net.pair_embed.parameters())
-    params_inout += list(model.net.fc.parameters())
+    params_in += list(model.net.embed.input_bn.parameters())
+    params_in += list(model.net.pair_embed.parameters())
+    params_out = list(model.net.fc.parameters())
 
     for block in model.net.blocks + model.net.cls_blocks:
         params_attn += list(block.attn.parameters())
@@ -184,7 +188,8 @@ def init_param_groups_ParticleTransformer(model, cfg):
     return param_groups_transformer_helper(
         params_framesnet,
         params_framesnet_inout,
-        params_inout,
+        params_in,
+        params_out,
         params_attn,
         params_mlp,
         params_noq,
@@ -193,7 +198,14 @@ def init_param_groups_ParticleTransformer(model, cfg):
 
 
 def param_groups_transformer_helper(
-    params_framesnet, params_framesnet_inout, params_inout, params_attn, params_mlp, params_noq, cfg
+    params_framesnet,
+    params_framesnet_inout,
+    params_in,
+    params_out,
+    params_attn,
+    params_mlp,
+    params_noq,
+    cfg,
 ):
     def is_bias(param):
         return param.ndim == 1
@@ -202,13 +214,16 @@ def param_groups_transformer_helper(
         out_nobias += [p for p in in_list if not is_bias(p)]
         out_bias += [p for p in in_list if is_bias(p)]
 
+    base_lr = cfg.training.lr if not hasattr(cfg, "finetune") else cfg.finetune.lr_backbone
+    head_lr = cfg.training.lr if not hasattr(cfg, "finetune") else cfg.finetune.lr_head
+
     # divide backbone parameters
     params_q_wd = []
     params_noq_wd = []
     if cfg.weightquant.inout:
-        sort_bias(params_inout, params_q_wd, params_noq)
+        sort_bias(params_in, params_q_wd, params_noq)
     else:
-        sort_bias(params_inout, params_noq_wd, params_noq)
+        sort_bias(params_in, params_noq_wd, params_noq)
     if cfg.weightquant.attn:
         sort_bias(params_attn, params_q_wd, params_noq)
     else:
@@ -218,20 +233,43 @@ def param_groups_transformer_helper(
     else:
         sort_bias(params_mlp, params_noq_wd, params_noq)
 
+    # divide head parameters
+    params_q_wd_head = []
+    params_noq_wd_head = []
+    params_noq_head = []
+    if cfg.weightquant.inout:
+        sort_bias(params_out, params_q_wd_head, params_noq_head)
+    else:
+        sort_bias(params_out, params_noq_wd_head, params_noq_head)
     param_groups = [
         {
             "params": params_q_wd,
-            "lr": cfg.training.lr,
+            "lr": base_lr,
             "weight_decay": cfg.training.weight_decay,
             "quant_bits": cfg.weightquant.bits,
         },
         {
             "params": params_noq,
-            "lr": cfg.training.lr,
+            "lr": base_lr,
         },
         {
             "params": params_noq_wd,
-            "lr": cfg.training.lr,
+            "lr": base_lr,
+            "weight_decay": cfg.training.weight_decay,
+        },
+        {
+            "params": params_q_wd_head,
+            "lr": head_lr,
+            "weight_decay": cfg.training.weight_decay,
+            "quant_bits": cfg.weightquant.bits,
+        },
+        {
+            "params": params_noq_head,
+            "lr": head_lr,
+        },
+        {
+            "params": params_noq_wd_head,
+            "lr": head_lr,
             "weight_decay": cfg.training.weight_decay,
         },
     ]
@@ -252,17 +290,17 @@ def param_groups_transformer_helper(
     param_groups += [
         {
             "params": framesnet_params_q_wd,
-            "lr": cfg.training.lr_factor_framesnet * cfg.training.lr,
+            "lr": cfg.training.lr_factor_framesnet * base_lr,
             "weight_decay": cfg.training.weight_decay_framesnet,
             "quant_bits": cfg.weightquant.bits,
         },
         {
             "params": framesnet_params_noq,
-            "lr": cfg.training.lr_factor_framesnet * cfg.training.lr,
+            "lr": cfg.training.lr_factor_framesnet * base_lr,
         },
         {
             "params": framesnet_params_noq_wd,
-            "lr": cfg.training.lr_factor_framesnet * cfg.training.lr,
+            "lr": cfg.training.lr_factor_framesnet * base_lr,
             "weight_decay": cfg.training.weight_decay_framesnet,
         },
     ]
