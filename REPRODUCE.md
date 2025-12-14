@@ -124,7 +124,7 @@ python run.py -cp config -cn jctagging model=tag_slim training=jc_ParT data.feat
 python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/slim-pretrain training=top_slim model.use_amp=true inputquant.use=true weightquant.use=true
 ```
 
-Figure 7:
+Figure 5: Energy consumption of large taggers
 ```bash
 python run.py -cp config model=tag_top_transformer training=top_transformer
 python run.py -cp config model=tag_top_transformer training=top_transformer model.use_amp=true
@@ -139,7 +139,7 @@ python run.py -cp config model=tag_lgatr training=top_lgatr
 python run.py -cp config model=tag_ParT training=top_transformer
 ```
 
-Figure 8
+Figure 6: Bit operations of small taggers
 ```bash
 python run.py -cp config model=tag_transformer_1k training=top_1k
 python run.py -cp config model=tag_transformer_1k training=top_1k model.use_amp=true
