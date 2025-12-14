@@ -2,7 +2,6 @@ import json
 
 from cost_estimate.estimate import estimate_bitops, estimate_flops
 
-SEQLEN = 50
 ARCHS = [
     "transformer",
     "llocatransformer",
@@ -50,31 +49,32 @@ def get_arch_kwargs(arch):
 
 def main(save=True):
     results = dict()
-    for archname in ARCHS:
-        arch, arch_kwargs = get_arch_kwargs(archname)
-        arch_kwargs["seqlen"] = SEQLEN
+    for seqlen in [30, 50]:
+        for archname in ARCHS:
+            arch, arch_kwargs = get_arch_kwargs(archname)
+            arch_kwargs["seqlen"] = seqlen
 
-        results_sub = dict()
-        for bits_a, bits_w in BITS:
-            bits_default = bits_a if bits_a > 16 else 16
-            bitops = estimate_bitops(
-                arch,
-                arch_kwargs,
-                bits_a=bits_a,
-                bits_w=bits_w,
-                bits_default=bits_default,
-                bits_fp=32,
-            )
-            flops = estimate_flops(arch, arch_kwargs)
-            print(
-                f"{archname:<20} bits_a={bits_a:>2} bits_w={bits_w:>2}: bitops={bitops:.1e}, flops={flops:.1e}"
-            )
-            results_sub[f"{MAP[bits_a]},{MAP[bits_w]}"] = bitops
-        results[archname] = results_sub
+            results_sub = dict()
+            for bits_a, bits_w in BITS:
+                bits_default = bits_a if bits_a > 16 else 16
+                bitops = estimate_bitops(
+                    arch,
+                    arch_kwargs,
+                    bits_a=bits_a,
+                    bits_w=bits_w,
+                    bits_default=bits_default,
+                    bits_fp=32,
+                )
+                flops = estimate_flops(arch, arch_kwargs)
+                print(
+                    f"{seqlen}: {archname:<20} bits_a={bits_a:>2} bits_w={bits_w:>2}: bitops={bitops:.1e}, flops={flops:.1e}"
+                )
+                results_sub[f"{MAP[bits_a]},{MAP[bits_w]}"] = bitops
+            results[archname] = results_sub
 
-    if save:
-        with open("cost_estimate/bitops.json", "w") as file:
-            json.dump(results, file, indent=2)
+        if save:
+            with open(f"cost_estimate/bitops_{seqlen}.json", "w") as file:
+                json.dump(results, file, indent=2)
 
 
 if __name__ == "__main__":
