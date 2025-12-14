@@ -31,7 +31,7 @@ Table 1: Standard top tagging
 python run.py -cp config model=tag_slim training=top_slim
 
 # Pretraining + finetuning L-GATr-slim
-python run.py -cp config -cn jctagging model=tag_slim training=jc_transformer data.features=fourmomenta exp_name=pretrain run_name=slim-pretrain
+python run.py -cp config -cn jctagging model=tag_slim training=jc_ParT data.features=fourmomenta exp_name=pretrain run_name=slim-pretrain
 python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/slim-pretrain training=top_slim
 ```
 
@@ -94,9 +94,9 @@ python run.py -cp config model=tag_slim training=top_slim
 
 python run.py -cp config model=tag_ParT_10k training=top_10k
 python run.py -cp config model=tag_ParT_100k training=top_100k
-python run.py -cp config model=tag_ParT training=top_ParT
+python run.py -cp config model=tag_ParT training=top_transformer
 
-# Repeat with model=tag_X_deep_1k for right plot
+# Repeat with model=tag_X_deep_1k for right plot (including model=tag_ParT_1k)
 python run.py -cp config model=tag_transformer_deep_1k training=top_1k
 # and so on...
 ```
@@ -109,18 +109,18 @@ Table 5: Landscape of fp8+QAT top taggers
 python run.py -cp config model=tag_top_transformer training=top_transformer training.scheduler=CosineAnnealingLR weightquant.use=true inputquant.use=true model.use_amp=true
 python run.py -cp config model=tag_top_transformer model/framesnet=learnedpd model/framesnet/equivectors=equimlp training=top_transformer training.scheduler=CosineAnnealingLR weightquant.use=true inputquant.use=true model.use_amp=true
 python run.py -cp config model=tag_slim training=top_slim weightquant.use=true inputquant.use=true model.use_amp=true
-python run.py -cp config model=tag_ParT training=top_ParT weightquant.use=true inputquant.use=true model.use_amp=true
+python run.py -cp config model=tag_ParT training=top_transformer weightquant.use=true inputquant.use=true model.use_amp=true
 # STE: add weightquant.prox_map=hard to the PARQ commands
 
 # pretraining + finetuning
 # no quantization (same as in Table 1)
-python run.py -cp config -cn jctagging model=tag_slim training=jc_transformer data.features=fourmomenta exp_name=pretrain run_name=slim-pretrain
+python run.py -cp config -cn jctagging model=tag_slim training=jc_ParT data.features=fourmomenta exp_name=pretrain run_name=slim-pretrain
 python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/slim-pretrain training=top_slim exp_name=finetune run_name=slim-finetune
 # STE
-python run.py -cp config -cn jctagging model=tag_slim training=jc_transformer data.features=fourmomenta weightquant.use=true inputquant.use=true model.use_amp=true exp_name=pretrain run_name=slim-pretrain-fp8-STE
+python run.py -cp config -cn jctagging model=tag_slim training=jc_ParT data.features=fourmomenta weightquant.use=true inputquant.use=true model.use_amp=true exp_name=pretrain run_name=slim-pretrain-fp8-STE
 python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/slim-pretrain training=top_slim model.use_amp=true inputquant.use=true weightquant.use=true weightquant.prox_map=hard
 # PARQ
-python run.py -cp config -cn jctagging model=tag_slim training=jc_transformer data.features=fourmomenta model.use_amp=true inputquant.use=true exp_name=pretrain run_name=slim-pretrain-fp8-PARQ
+python run.py -cp config -cn jctagging model=tag_slim training=jc_ParT data.features=fourmomenta model.use_amp=true inputquant.use=true exp_name=pretrain run_name=slim-pretrain-fp8-PARQ
 python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/slim-pretrain training=top_slim model.use_amp=true inputquant.use=true weightquant.use=true
 ```
 
@@ -136,7 +136,7 @@ python run.py -cp config model=tag_top_transformer training=top_transformer trai
 python run.py -cp config model=tag_top_transformer model/framesnet=learnedpd training=top_transformer
 python run.py -cp config model=tag_slim training=top_slim
 python run.py -cp config model=tag_lgatr training=top_lgatr
-python run.py -cp config model=tag_ParT training=top_ParT
+python run.py -cp config model=tag_ParT training=top_transformer
 ```
 
 Figure 8
