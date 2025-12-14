@@ -100,19 +100,19 @@ def llocatransformer_cost(
     cost_framesnet_in = linear_cost(
         dim_1=15,
         dim_2=channels_framesnet,
-        factor=factor_aw,
+        factor=factor_aa,
         factor_bias=factor_aa,
     )
     cost_framesnet_out = linear_cost(
         dim_1=channels_framesnet,
         dim_2=3,
-        factor=factor_aw,
+        factor=factor_aa,
         factor_bias=factor_aa,
     )
     cost_framesnet_middle = linear_cost(
         dim_1=channels_framesnet,
         dim_2=channels_framesnet,
-        factor=factor_aw,
+        factor=factor_aa,
         factor_bias=factor_aa,
     )
     cost_framesnet_middle *= layers_framesnet - 1
@@ -400,12 +400,12 @@ def estimate_energy(
     dtype_a="float32",
     dtype_w="float32",
     dtype_fp="float32",
-    mode="literature",
+    mode="Horowitz",
 ):
-    if mode == "literature":
+    if mode == "Horowitz":
 
         def get_energy(mul_op, dtype):
-            return get_energy_cost_7nm_literature(mul_op, dtype=dtype)
+            return get_energy_cost_7nm_Horowitz(mul_op, dtype=dtype)
     elif mode == "H100-estimate":
 
         def get_energy(mul_op, dtype):
@@ -443,7 +443,7 @@ def estimate_energy(
     return energy
 
 
-def get_energy_cost_7nm_literature(mul_op, dtype):
+def get_energy_cost_7nm_Horowitz(mul_op, dtype):
     # https://arxiv.org/pdf/2112.00133 table 1
     if dtype == "float32":
         return 1.310 if mul_op else 0.380

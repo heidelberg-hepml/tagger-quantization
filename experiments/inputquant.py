@@ -33,9 +33,8 @@ def input_quantize_transformer(model, cfg_inputs):
             )
     if cfg_inputs.framesnet and isinstance(model.framesnet, LearnedFrames):
         if isinstance(model.framesnet.equivectors, MLPVectors):
-            framesnet_inner_layers = model.framesnet.equivectors.block.mlp.mlp[1:-1]
             input_quantize_module(
-                module=framesnet_inner_layers,
+                module=model.framesnet.equivectors,
                 cfg=cfg_inputs,
             )
         else:
