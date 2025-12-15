@@ -124,13 +124,16 @@ class BaseExperiment:
         )
 
         if self.cfg.inputquant.use:
-            if not self.cfg.weightquant.use and self.cfg.inputquant.match_weightquant:
-                LOGGER.info("Weight quantization not specified, using same quantization as input")
-                with open_dict(self.cfg):
-                    self.cfg.weightquant.use = True
-                    self.cfg.weightquant.prox_map = "hard"
-                    self.cfg.weightquant.bits = self.cfg.inputquant.bits
-                    self.cfg.weightquant.quantizer = self.cfg.inputquant.quantizer
+            if self.cfg.inputquant.match_weightquant:
+                if not self.cfg.weightquant.use:
+                    LOGGER.info(
+                        "Weight quantization not specified, using same quantization as input"
+                    )
+                    with open_dict(self.cfg):
+                        self.cfg.weightquant.use = True
+                        self.cfg.weightquant.prox_map = "hard"
+                        self.cfg.weightquant.bits = self.cfg.inputquant.bits
+                        self.cfg.weightquant.quantizer = self.cfg.inputquant.quantizer
                 assert self.cfg.weightquant.bits <= self.cfg.inputquant.bits, (
                     "Input quantization bits must be greater than weight quantization bits"
                 )
