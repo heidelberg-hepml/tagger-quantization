@@ -37,12 +37,11 @@ inputquant:
  quantizer: float
  quant_per_channel: false
  quantize_output: true
+ match_weightquant: true
 
  mlp: true
  attn: true
  framesnet: true
-
- match_weightquant: true
 
 warm_start_idx: null
 save: true
