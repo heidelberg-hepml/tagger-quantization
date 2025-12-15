@@ -42,6 +42,8 @@ inputquant:
  attn: true
  framesnet: true
 
+ match_weightquant: true
+
 warm_start_idx: null
 save: true
 use_mlflow: false
