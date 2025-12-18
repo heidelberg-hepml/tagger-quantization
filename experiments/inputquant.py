@@ -1,6 +1,6 @@
 import torch
 from lgatr.layers import EquiLinear
-from lgatr.nets.lgatr_slim import Linear as LorentzLinear
+from lgatr.nets.lgatr_slim import Linear as SlimEquiLinear
 from lloca.equivectors import MLPVectors
 from lloca.framesnet.equi_frames import LearnedFrames
 from torch import Tensor
@@ -67,6 +67,7 @@ def input_quantize_module(module, cfg):
         quantizer=cfg.quantizer,
         bits=cfg.bits,
         quant_per_channel=cfg.quant_per_channel,
+        match_weightquant=cfg.match_weightquant,
         quantize_output=cfg.quantize_output,
     )
     for name, child in list(module.named_children()):
@@ -88,8 +89,8 @@ def input_quantize_module(module, cfg):
                 **quant_kwargs,
             )
             module._modules[name] = new_layer
-        elif isinstance(child, LorentzLinear):
-            new_layer = QuantLorentzLinear(
+        elif isinstance(child, SlimEquiLinear):
+            new_layer = QuantSlimEquiLinear(
                 in_v_channels=child._in_v_channels,
                 out_v_channels=child._out_v_channels,
                 in_s_channels=child._in_s_channels,
@@ -107,19 +108,21 @@ def input_quantize_module(module, cfg):
 class QuantLayer:
     def __init__(
         self,
-        quantizer: str = "uniform",
+        quantizer: str = "float",
         bits: int = 8,
         quant_per_channel: bool = False,
+        match_weightquant: bool = True,
         quantize_output: bool = False,
     ):
         self.quantizer = get_quantizer(quantizer, bits)
         self.bits = bits
+        self.match_weightquant = match_weightquant
         self.quantize_output = quantize_output
         self.dim = 1 if quant_per_channel else None
 
     def ste_quantize(self, input: Tensor) -> Tensor:
         """
-        Straight-Through Estimator to quantize activations
+        Straight-Through Estimator to quantize  and weights
         """
         shape = input.shape
         if input.dim() > 2:
@@ -137,9 +140,10 @@ class QuantLinear(Linear, QuantLayer):
     def __init__(
         self,
         *args,
-        quantizer: str = "uniform",
+        quantizer: str = "float",
         bits: int = 8,
         quant_per_channel: bool = False,
+        match_weightquant: bool = True,
         quantize_output: bool = True,
         **kwargs,
     ):
@@ -150,10 +154,14 @@ class QuantLinear(Linear, QuantLayer):
             bits=bits,
             quant_per_channel=quant_per_channel,
             quantize_output=quantize_output,
+            match_weightquant=match_weightquant,
         )
 
     def forward(self, input: Tensor) -> Tensor:
         input = QuantLayer.ste_quantize(self, input)
+        if self.match_weightquant:
+            for param in self.parameters():
+                param = QuantLayer.ste_quantize(self, param)
         output = Linear.forward(self, input)
         if self.quantize_output:
             output = QuantLayer.ste_quantize(self, output)
@@ -164,9 +172,10 @@ class QuantEquiLinear(EquiLinear, QuantLayer):
     def __init__(
         self,
         *args,
-        quantizer: str = "uniform",
+        quantizer: str = "float",
         bits: int = 8,
         quant_per_channel: bool = False,
+        match_weightquant: bool = True,
         quantize_output: bool = True,
         **kwargs,
     ):
@@ -179,6 +188,7 @@ class QuantEquiLinear(EquiLinear, QuantLayer):
             quantizer=quantizer,
             bits=bits,
             quant_per_channel=quant_per_channel,
+            match_weightquant=match_weightquant,
             quantize_output=quantize_output,
         )
 
@@ -186,6 +196,9 @@ class QuantEquiLinear(EquiLinear, QuantLayer):
         multivectors = QuantLayer.ste_quantize(self, multivectors)
         if scalars is not None:
             scalars = QuantLayer.ste_quantize(self, scalars)
+        if self.match_weightquant:
+            for param in self.parameters():
+                param = QuantLayer.ste_quantize(self, param)
         output_mv, output_s = EquiLinear.forward(self, multivectors, scalars)
         if self.quantize_output:
             output_mv = QuantLayer.ste_quantize(self, output_mv)
@@ -194,29 +207,34 @@ class QuantEquiLinear(EquiLinear, QuantLayer):
         return output_mv, output_s
 
 
-class QuantLorentzLinear(LorentzLinear, QuantLayer):
+class QuantSlimEquiLinear(SlimEquiLinear, QuantLayer):
     def __init__(
         self,
         *args,
-        quantizer: str = "uniform",
+        quantizer: str = "float",
         bits: int = 8,
         quant_per_channel: bool = False,
+        match_weightquant: bool = True,
         quantize_output: bool = True,
         **kwargs,
     ):
-        LorentzLinear.__init__(self, *args, **kwargs)
+        SlimEquiLinear.__init__(self, *args, **kwargs)
         QuantLayer.__init__(
             self,
             quantizer=quantizer,
             bits=bits,
             quant_per_channel=quant_per_channel,
+            match_weightquant=match_weightquant,
             quantize_output=quantize_output,
         )
 
     def forward(self, vectors: Tensor, scalars: Tensor) -> tuple[Tensor, Tensor]:
         vectors = QuantLayer.ste_quantize(self, vectors)
         scalars = QuantLayer.ste_quantize(self, scalars)
-        vectors_out, scalars_out = LorentzLinear.forward(self, vectors, scalars)
+        if self.match_weightquant:
+            for param in self.parameters():
+                param = QuantLayer.ste_quantize(self, param)
+        vectors_out, scalars_out = SlimEquiLinear.forward(self, vectors, scalars)
         if self.quantize_output:
             vectors_out = QuantLayer.ste_quantize(self, vectors_out)
             scalars_out = QuantLayer.ste_quantize(self, scalars_out)
