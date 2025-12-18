@@ -114,6 +114,15 @@ class QuantLayer:
         match_weightquant: bool = True,
         quantize_output: bool = False,
     ):
+        if match_weightquant:
+            # some quantizers do not preserve existing quantization
+            # the scaling must be absmax to ensure that weights quantized during training
+            # keep the same quantization when quantized on the fly
+            if quantizer not in ["float", "maxuniform"]:
+                raise NotImplementedError(
+                    "STE quantization of the weights on the fly probably requires "
+                    "a quantizer that preserves quantization (i.e. absmax scaling)"
+                )
         self.quantizer = get_quantizer(quantizer, bits)
         self.bits = bits
         self.match_weightquant = match_weightquant
