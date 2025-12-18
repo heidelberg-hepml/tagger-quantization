@@ -12,6 +12,7 @@ import torch
 import torch.distributed as dist
 from hydra.utils import instantiate
 from omegaconf import OmegaConf, errors, open_dict
+from parq.optim.parq import normalized_mirror_sigmoid
 from torch.cuda.amp import GradScaler
 from torch_ema import ExponentialMovingAverage
 
@@ -20,7 +21,12 @@ from experiments.inputquant import input_quantize
 from experiments.logger import FORMATTER, LOGGER, MEMORY_HANDLER, RankFilter
 from experiments.misc import flatten_dict, get_device
 from experiments.mlflow import log_mlflow
-from experiments.parq import init_parq_optimizer, init_parq_param_groups
+from experiments.parq import (
+    init_parq_optimizer,
+    init_parq_param_groups,
+    quantize_model,
+    temporary_quantize,
+)
 from experiments.ranger import Ranger
 
 # set to 'True' to debug autograd issues (slows down code)
@@ -401,7 +407,7 @@ class BaseExperiment:
         LOGGER.debug(
             f"Using optimizer {self.cfg.training.optimizer} with lr={self.cfg.training.lr}"
         )
-        if self.cfg.weightquant.use:
+        if self.cfg.weightquant.use and self.cfg.weightquant.prox_map != "naive":
             self.optimizer = init_parq_optimizer(self.optimizer, self.cfg)
 
         # load existing optimizer if specified
@@ -533,6 +539,13 @@ class BaseExperiment:
         self.train_metrics = self._init_metrics()
         self.val_metrics = self._init_metrics()
 
+        if self.cfg.weightquant.use and self.cfg.weightquant.prox_map == "parq":
+            self.parq_schedule = []
+
+        if self.cfg.evaluation.eval_quantized:
+            self.val_loss_quantized = []
+            self.val_metrics_quantized = self._init_metrics()
+
         # early stopping
         smallest_val_loss, smallest_val_loss_step = 1e10, 0
         patience = 0
@@ -595,6 +608,9 @@ class BaseExperiment:
 
                 if self.cfg.training.scheduler in ["ReduceLROnPlateau"]:
                     self.scheduler.step(val_loss)
+
+                if self.cfg.evaluation.eval_quantized:
+                    self._validate_quantized(step)
 
             # output
             if step == 0:
@@ -744,6 +760,16 @@ class BaseExperiment:
         for key, value in metrics.items():
             self.train_metrics[key].append(value)
 
+        if self.cfg.weightquant.use and self.cfg.weightquant.prox_map == "parq":
+            inv_slope = normalized_mirror_sigmoid(
+                step,
+                self.optimizer.prox_map.anneal_start,
+                self.optimizer.prox_map.anneal_end,
+                self.optimizer.prox_map.steepness,
+                self.optimizer.prox_map.anneal_center,
+            )
+            self.parq_schedule.append(inv_slope)
+
         # log to mlflow
         if (
             self.cfg.use_mlflow
@@ -794,6 +820,31 @@ class BaseExperiment:
                 log_mlflow(f"val.{key}", values[-1], step=step)
         return val_loss
 
+    def _validate_quantized(self, step):
+        losses = []
+        metrics = self._init_metrics()
+
+        self.model.eval()
+        with torch.no_grad(), temporary_quantize(self.model, self.cfg):
+            for data in self.val_loader:
+                loss, metric = self._batch_loss(data)
+
+                if self.world_size > 1:
+                    dist.all_reduce(loss, op=dist.ReduceOp.SUM)
+                    loss /= self.world_size
+                losses.append(loss.cpu().item())
+                for key, value in metric.items():
+                    metrics[key].append(value.cpu().item())
+        val_loss = np.mean(losses)
+        self.val_loss_quantized.append(val_loss)
+        for key, values in metrics.items():
+            self.val_metrics_quantized[key].append(np.mean(values))
+        if self.cfg.use_mlflow:
+            log_mlflow("val_quantized.loss", val_loss, step=step)
+            for key, values in self.val_metrics_quantized.items():
+                log_mlflow(f"val_quantized.{key}", values[-1], step=step)
+        return val_loss
+
     def _save_config(self, filename, to_mlflow=False):
         # Save config
         if not self.cfg.save:
@@ -815,6 +866,9 @@ class BaseExperiment:
         if filename is None:
             filename = f"model_run{self.cfg.run_idx}.pt"
         model_path = os.path.join(self.cfg.run_dir, "models", filename)
+
+        if self.cfg.weightquant.use and self.cfg.weightquant.prox_map == "naive":
+            quantize_model(self.model, self.cfg)
         LOGGER.debug(f"Saving model at {model_path}")
         torch.save(
             {

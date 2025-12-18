@@ -9,6 +9,7 @@ from torch_geometric.loader import DataLoader
 from experiments.base_experiment import BaseExperiment
 from experiments.logger import LOGGER
 from experiments.mlflow import log_mlflow
+from experiments.parq import temporary_quantize
 from experiments.tagging.dataset import TopTaggingDataset
 from experiments.tagging.embedding import embed_tagging_data, get_num_tagging_features
 from experiments.tagging.plots import plot_mixer
@@ -215,7 +216,7 @@ class TaggingExperiment(BaseExperiment):
                 )
 
     @torch.no_grad()
-    def _evaluate_single(self, loader, title, mode, step=None):
+    def _evaluate_single(self, loader, title, mode, step=None, quantized=False):
         assert mode in ["val", "eval"]
 
         if mode == "eval":
@@ -291,6 +292,8 @@ class TaggingExperiment(BaseExperiment):
                     # do not log matrices
                     continue
                 name = f"{mode}.{title}" if mode == "eval" else "val"
+                if quantized:
+                    name += "_quantized"
                 log_mlflow(f"{name}.{key}", value, step=step)
 
         if mode == "eval":
@@ -325,12 +328,20 @@ class TaggingExperiment(BaseExperiment):
         if self.cfg.train:
             plot_dict["train_loss"] = self.train_loss
             plot_dict["val_loss"] = self.val_loss
+            if self.cfg.evaluation.eval_quantized:
+                plot_dict["val_loss_quantized"] = self.val_loss_quantized
             plot_dict["train_lr"] = self.train_lr
             plot_dict["grad_norm"] = torch.stack(self.grad_norm_train).cpu()
             plot_dict["grad_norm_frames"] = torch.stack(self.grad_norm_frames).cpu()
             plot_dict["grad_norm_net"] = torch.stack(self.grad_norm_net).cpu()
             for key, value in self.train_metrics.items():
                 plot_dict[key] = value
+            if (
+                self.cfg.weightquant.use
+                and self.cfg.weightquant.prox_map == "parq"
+                and self.cfg.plotting.parq_schedule
+            ):
+                plot_dict["parq_schedule"] = self.parq_schedule
         plot_mixer(self.cfg, plot_path, title, plot_dict)
 
     def _init_loss(self):
@@ -344,6 +355,14 @@ class TaggingExperiment(BaseExperiment):
         else:
             metrics = self._evaluate_single(self.val_loader, "val", mode="val", step=step)
         self.val_loss.append(metrics["loss"])
+        return metrics["loss"]
+
+    def _validate_quantized(self, step):
+        with torch.no_grad(), temporary_quantize(self.model, self.cfg):
+            metrics = self._evaluate_single(
+                self.val_loader, "val", mode="val", step=step, quantized=True
+            )
+        self.val_loss_quantized.append(metrics["loss"])
         return metrics["loss"]
 
     def _batch_loss(self, batch):
