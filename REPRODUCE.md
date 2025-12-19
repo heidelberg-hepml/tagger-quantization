@@ -21,7 +21,7 @@ pip install -r requirements.txt
 python data/collect_data.py toptagging
 ```
 
-Download [JetClass dataset](https://zenodo.org/records/6619768) and link it in `config/jctagging.yaml` `data.data_dir`.
+Download [JetClass dataset](https://zenodo.org/records/6619768) and put its path in `config/jctagging.yaml` `data.data_dir`.
 
 ### 3) Training taggers
 
@@ -38,15 +38,17 @@ python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/s
 Table 2: Standard JetClass
 ```bash
 python run.py -cp config -cn jctagging model=tag_slim training=jc_ParT
-python run.py -cp config -cn jctagging model=tag_transformer model/framesnet=learnedpd training=jc_ParT # updated compared to https://arxiv.org/abs/2508.14898
+python run.py -cp config -cn jctagging model=tag_transformer model/framesnet=learnedpd training=jc_ParT # updated compared to https://arxiv.org/abs/2508.14898, now using smaller Frames-Net
 ```
 
 Table 3: Amplitude regression
 
 Run this code in the [lloca-experiments repo](github.com/heidelberg-hepml/lloca-experiments).
 ```bash
-python run.py -cp config -cn amplitudesxl model=amp_slim
+python run.py -cp config -cn amplitudesxl model=amp_slim data.num_train_files=10
 ```
+
+The figure in the right panel of table 3 is obtained by running similar commands for all other networks, and then extracting the amplitudes in the test dataset to create the plot.
 
 Figure 2: Event generation
 
@@ -94,59 +96,34 @@ python run.py -cp config model=tag_slim training=top_slim
 
 python run.py -cp config model=tag_ParT_10k training=top_10k
 python run.py -cp config model=tag_ParT_100k training=top_100k
-python run.py -cp config model=tag_ParT training=top_transformer
+python run.py -cp config model=tag_ParT training=top_ParT
 
-# Repeat with model=tag_X_deep_1k for right plot (including model=tag_ParT_1k)
+# Repeat with model=tag_X_deep_1k for right plot (including model=tag_ParT_deep_1k)
 python run.py -cp config model=tag_transformer_deep_1k training=top_1k
 # and so on...
 ```
 
-Table 5: Landscape of fp8+QAT top taggers
+Table 5 (landscape of fp8+QAT top taggers) and Figure 5 (energy consumption of large taggers)
 ```bash
-# from-scratch trainings
-# no quantization: same as Table 1
-# PARQ
-python run.py -cp config model=tag_top_transformer training=top_transformer training.scheduler=CosineAnnealingLR weightquant.use=true inputquant.use=true model.use_amp=true
-python run.py -cp config model=tag_top_transformer model/framesnet=learnedpd model/framesnet/equivectors=equimlp training=top_transformer training.scheduler=CosineAnnealingLR weightquant.use=true inputquant.use=true model.use_amp=true
-python run.py -cp config model=tag_slim training=top_slim weightquant.use=true inputquant.use=true model.use_amp=true
-python run.py -cp config model=tag_ParT training=top_transformer weightquant.use=true inputquant.use=true model.use_amp=true
-# STE: add weightquant.prox_map=hard to the PARQ commands
+python run.py -cp config model=tag_top_transformer training=top_transformer # fp32
+python run.py -cp config model=tag_top_transformer training=top_transformer model.use_amp=true # fp16
+python run.py -cp config model=tag_top_transformer training=top_transformer model.use_amp=true inputquant.use=true # fp8
+python run.py -cp config model=tag_top_transformer training=top_transformer training.scheduler=CosineAnnealingLR model.use_amp=true inputquant.use=true weightquant.use=true # fp8+PARQ
+python run.py -cp config model=tag_top_transformer training=top_transformer training.scheduler=CosineAnnealingLR model.use_amp=true inputquant.use=true weightquant.use=true weightquant.prox_map=hard # fp8+STE
 
-# pretraining + finetuning
-# no quantization (same as in Table 1)
-python run.py -cp config -cn jctagging model=tag_slim training=jc_ParT data.features=fourmomenta exp_name=pretrain run_name=slim-pretrain
-python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/slim-pretrain training=top_slim exp_name=finetune run_name=slim-finetune
-# STE
-python run.py -cp config -cn jctagging model=tag_slim training=jc_ParT data.features=fourmomenta weightquant.use=true inputquant.use=true model.use_amp=true exp_name=pretrain run_name=slim-pretrain-fp8-STE
-python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/slim-pretrain training=top_slim model.use_amp=true inputquant.use=true weightquant.use=true weightquant.prox_map=hard
-# PARQ
-python run.py -cp config -cn jctagging model=tag_slim training=jc_ParT data.features=fourmomenta model.use_amp=true inputquant.use=true exp_name=pretrain run_name=slim-pretrain-fp8-PARQ
-python run.py -cp config -cn toptaggingft finetune.backbone_path=runs/pretrain/slim-pretrain training=top_slim model.use_amp=true inputquant.use=true weightquant.use=true
-```
-
-Figure 5: Energy consumption of large taggers
-```bash
-python run.py -cp config model=tag_top_transformer training=top_transformer
-python run.py -cp config model=tag_top_transformer training=top_transformer model.use_amp=true
-python run.py -cp config model=tag_top_transformer training=top_transformer model.use_amp=true inputquant.use=true
-python run.py -cp config model=tag_top_transformer training=top_transformer training.scheduler=CosineAnnealingLR model.use_amp=true inputquant.use=true
-
-# Repeat the four quantization levels for each network
-# with training.scheduler=CosineAnnealingLR for tag_transformer and fp8+QAT
+# Repeat the five quantization levels for each network
+# with training.scheduler=CosineAnnealingLR for tag_transformer and fp8+PARQ/STE
 python run.py -cp config model=tag_top_transformer model/framesnet=learnedpd training=top_transformer
 python run.py -cp config model=tag_slim training=top_slim
-python run.py -cp config model=tag_lgatr training=top_lgatr
-python run.py -cp config model=tag_ParT training=top_transformer
 ```
 
-Figure 6: Bit operations of small taggers
+Figure 6: Performance over bit operations for small taggers
 ```bash
 python run.py -cp config model=tag_transformer_1k training=top_1k
 python run.py -cp config model=tag_transformer_1k training=top_1k model.use_amp=true
 python run.py -cp config model=tag_transformer_1k training=top_1k model.use_amp=true inputquant.use=true
-python run.py -cp config model=tag_transformer_1k training=top_1k model.use_amp=true inputquant.use=true weightquant.use=true
 
-# Repeat the four quantization levels for the following networks
+# Repeat the three quantization levels for the following networks
 python run.py -cp config model=tag_transformer_1k training=top_1k model/framesnet=learnedpd model/framesnet/equivectors=equimlp_1k
 python run.py -cp config model=tag_transformer_1k training=top_1k model/framesnet=learnedpd model/framesnet/equivectors=equimlp_1k model.framesnet.is_global=true
 ```
