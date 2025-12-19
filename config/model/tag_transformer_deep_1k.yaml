@@ -4,4 +4,4 @@ net:
  mlp_factor: 1
 
 defaults:
- - tag_transformer
+ - tag_top_transformer
