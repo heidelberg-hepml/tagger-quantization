@@ -340,6 +340,18 @@ class BaseExperiment:
         modelname = self.cfg.model.net._target_.rsplit(".", 1)[-1]
         if self.cfg.weightquant.use:
             param_groups = init_parq_param_groups(self.model, self.cfg, modelname, param_groups)
+            num_params_total = sum(
+                p.numel() for group in param_groups for p in group["params"] if p.requires_grad
+            )
+            num_params_quantized = sum(
+                p.numel()
+                for group in param_groups
+                for p in group["params"]
+                if p.requires_grad and "quant_bits" in group
+            )
+            LOGGER.info(
+                f"Fraction of quantized parameters: {num_params_quantized}/{num_params_total} ({num_params_quantized / num_params_total * 100:.2f}%)"
+            )
 
         if param_groups is None:
 

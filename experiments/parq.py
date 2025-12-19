@@ -18,7 +18,6 @@ from parq.quant import (
 from parq.quant.uniform import AsymUnifQuantizer
 
 from experiments.floatquant import FloatQuantizer
-from experiments.logger import LOGGER
 
 
 def get_quantizer(name, bits):
@@ -84,18 +83,6 @@ def init_parq_param_groups(model, cfg, modelname, param_groups=None):
         param_groups = init_param_groups_ParticleTransformer(model, cfg)
     else:
         raise NotImplementedError(f"PARQ not implemented for model {modelname}")
-
-    num_params_total = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    num_params_quantized = sum(
-        p.numel()
-        for group in param_groups
-        for p in group["params"]
-        if p.requires_grad and "quant_bits" in group
-    )
-    LOGGER.info(
-        f"Fraction of quantized parameters: {num_params_quantized}/{num_params_total} ({num_params_quantized / num_params_total * 100:.2f}%)"
-    )
-
     return param_groups
 
 
