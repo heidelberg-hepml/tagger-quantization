@@ -1,6 +1,8 @@
 
 ## Reproducing our results
 
+This repo is based on https://github.com/heidelberg-hepml/lloca-experiments. For instructions on how to run our code, please have a look at that repo, in particular the REPRODUCE.md file.
+
 ### 1) Setup environment
 
 ```bash
