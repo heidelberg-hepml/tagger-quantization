@@ -1,6 +1,7 @@
 net:
  hidden_v_channels: 2
  hidden_s_channels: 4
+ num_blocks: 10
 
  num_heads: 1
 

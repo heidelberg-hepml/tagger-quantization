@@ -3,4 +3,4 @@ net:
  num_heads: 4
 
 defaults:
- - tag_transformer
+ - tag_top_transformer
