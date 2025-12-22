@@ -308,7 +308,8 @@ def quantize_model(model, cfg):
         modelname: Optional override for the model architecture name
     """
     if cfg.weightquant.bits == 0:
-        quantizer = get_quantizer("maxuniform", cfg.weightquant.bits)
+        # Max uniform quantization with two bits preserves ternary quantization
+        quantizer = get_quantizer("maxuniform", 2)
     elif cfg.weightquant.quantizer in ["float", "maxuniform"]:
         quantizer = get_quantizer(cfg.weightquant.quantizer, cfg.weightquant.bits)
     else:

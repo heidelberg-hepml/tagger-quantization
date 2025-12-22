@@ -621,7 +621,7 @@ class BaseExperiment:
                 if self.cfg.training.scheduler in ["ReduceLROnPlateau"]:
                     self.scheduler.step(val_loss)
 
-                if self.cfg.evaluation.eval_quantized:
+                if self.cfg.evaluation.eval_quantized and self.cfg.weightquant.use:
                     self._validate_quantized(step)
 
             # output
