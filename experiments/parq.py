@@ -305,7 +305,6 @@ def quantize_model(model, cfg):
     Args:
         model: The PyTorch model to quantize
         cfg: Config containing weightquant settings
-        modelname: Optional override for the model architecture name
     """
     if cfg.weightquant.bits == 0:
         # Max uniform quantization with two bits preserves ternary quantization
@@ -350,14 +349,13 @@ def restore_model(model, original_params):
 
 
 @contextmanager  # to use as: with temporary_quantize(model, cfg):
-def temporary_quantize(model, cfg, modelname=None):
+def temporary_quantize(model, cfg):
     """
     Temporarily quantize model parameters for evaluation, then restore originals.
 
     Args:
         model: The PyTorch model to quantize
         cfg: Config containing weightquant settings
-        modelname: Optional override for the model architecture
     """
 
     model, original_params = quantize_model(model, cfg)
