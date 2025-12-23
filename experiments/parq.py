@@ -310,8 +310,10 @@ def quantize_model(model, cfg):
     if cfg.weightquant.bits == 0:
         # Max uniform quantization with two bits preserves ternary quantization
         quantizer = get_quantizer("maxuniform", 2)
+        bits = 2
     elif cfg.weightquant.quantizer in ["float", "maxuniform"]:
         quantizer = get_quantizer(cfg.weightquant.quantizer, cfg.weightquant.bits)
+        bits = cfg.weightquant.bits
     else:
         raise ValueError(
             "Quantization is not idempotent for quantizer "
@@ -328,7 +330,7 @@ def quantize_model(model, cfg):
                 param_id = id(p)
                 original_params[param_id] = p.data.clone()
                 # Quantize
-                p.data, _ = quantizer.quantize(p=p.data, b=group["quant_bits"])
+                p.data, _ = quantizer.quantize(p=p.data, b=bits)
     return model, original_params
 
 
