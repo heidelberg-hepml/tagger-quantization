@@ -6,7 +6,7 @@ FONTSIZE_LEGEND = 13
 FONTSIZE_TICK = 12
 
 
-def plot_loss(file, losses, lr=None, labels=None, logy=True):
+def plot_loss(file, losses, lr=None, parq_schedule=None, labels=None, logy=True):
     if len(losses[1]) == 0:  # catch no-validations case
         losses = [losses[0]]
         labels = [labels[0]]
@@ -27,6 +27,16 @@ def plot_loss(file, losses, lr=None, labels=None, logy=True):
         axright = ax.twinx()
         axright.plot(iterations, lr, label="learning rate", color="crimson")
         axright.set_ylabel("Learning rate", fontsize=FONTSIZE)
+    if parq_schedule is not None:
+        axparq = ax.twinx()
+        axparq.spines.right.set_position(("outward", 60))
+        axparq.plot(
+            iterations,
+            parq_schedule,
+            label="PARQ inv. slope",
+            color="purple",
+        )
+        axparq.set_ylabel("PARQ inv. slope", fontsize=FONTSIZE)
     ax.set_xlabel("Number of iterations", fontsize=FONTSIZE)
     ax.set_ylabel("Loss", fontsize=FONTSIZE)
     ax.legend(fontsize=FONTSIZE_LEGEND, frameon=False, loc="upper right")

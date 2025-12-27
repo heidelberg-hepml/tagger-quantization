@@ -15,11 +15,17 @@ def plot_mixer(cfg, plot_path, title, plot_dict):
     if cfg.plotting.loss and cfg.train:
         file = f"{plot_path}/training.pdf"
         with PdfPages(file) as out:
+            losses = [plot_dict["train_loss"], plot_dict["val_loss"]]
+            labels = ["train loss", "val loss"]
+            if "val_loss_quantized" in plot_dict and len(plot_dict["val_loss_quantized"]) > 0:
+                losses.append(plot_dict["val_loss_quantized"])
+                labels.append("val loss (quantized)")
             plot_loss(
                 out,
-                [plot_dict["train_loss"], plot_dict["val_loss"]],
+                losses,
                 plot_dict["train_lr"],
-                labels=["train loss", "val loss"],
+                parq_schedule=plot_dict.get("parq_schedule", None),
+                labels=labels,
                 logy=True,
             )
             plot_metric(

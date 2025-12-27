@@ -4,19 +4,23 @@ from torch import Tensor
 
 
 class FloatQuantizer(Quantizer):
-    """Float quantizer for E4M3FN (8-bit), E3M2FN (6-bit) and E2M1FN (4-bit)."""
+    """Float quantizer for FP16, E4M3FN (8-bit), E3M2FN (6-bit) and E2M1FN (4-bit)."""
 
     def __init__(self, bits: int = 8, center: bool = False):
         """
         Args:
-            bits: 4, 6 or 8 bits
+            bits: 4, 6, 8 or 16 bits
             center: subtract mean before quantization
         """
         super().__init__(center=center)
 
-        if bits == 8:
+        if bits == 16:
+            self.e, self.m = 5, 10
+            self.max_val = torch.finfo(torch.float16).max
+            self.use_native = True
+        elif bits == 8:
             self.e, self.m = 4, 3
-            self.max_val = 448.0  # E4M3FN max (no inf, has NaN at exp=15)
+            self.max_val = torch.finfo(torch.float8_e4m3fn).max
             self.use_native = True
         elif bits == 6:
             self.e, self.m = 3, 2
@@ -27,7 +31,7 @@ class FloatQuantizer(Quantizer):
             self.max_val = 6.0  # E2M1FN max (no inf, no NaN)
             self.use_native = False
         else:
-            raise ValueError(f"Unsupported bits={bits}. Use 4, 6 or 8.")
+            raise ValueError(f"Unsupported bits={bits}. Use 4, 6, 8 or 16.")
 
         self.bits = bits
         self.codebook = self._build_codebook()
@@ -60,10 +64,11 @@ class FloatQuantizer(Quantizer):
 
         # Quantize
         if self.use_native:
-            # Float8: use native dtype
-            q = (q / scale).to(torch.float8_e4m3fn).to(p.dtype) * scale
+            # Float8/Float16: use native dtype
+            target_dtype = torch.float16 if self.bits == 16 else torch.float8_e4m3fn
+            q = (q / scale).to(target_dtype).to(p.dtype) * scale
         else:
-            # Float4: snap to codebook
+            # Float4/Float6: snap to codebook
             bin_edges = (Q[:-1] + Q[1:]) / 2.0
             indices = torch.bucketize(q.flatten(), bin_edges, right=True)
             q = Q[indices].view_as(p)
@@ -93,8 +98,11 @@ class FloatQuantizer(Quantizer):
                     vals.append(val)
             else:
                 # Normals: exp_code >= 1
-                # For E4M3FN: exp=15 only has mantissa 0-6 (mantissa=7 is NaN)
+                if self.bits == 16 and exp_code == max_exp_code - 1:
+                    # Skip inf/NaN exponent for FP16
+                    continue
                 max_mant = mant_scale
+                # For E4M3FN: exp=15 only has mantissa 0-6 (mantissa=7 is NaN)
                 if self.bits == 8 and exp_code == max_exp_code - 1:
                     max_mant = mant_scale - 1  # Exclude last mantissa (NaN)
 
