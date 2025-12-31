@@ -117,8 +117,8 @@ def get_attention_mask(
         )
         if not on_cpu:
             return {
-                "cu_seqlens_q": seqlens,
-                "cu_seqlens_k": seqlens,
+                "cu_seqlens_q": cu_seqlens,
+                "cu_seqlens_k": cu_seqlens,
                 "max_seqlen_q": maxlen,
                 "max_seqlen_k": maxlen,
             }
