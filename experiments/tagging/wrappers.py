@@ -209,7 +209,7 @@ class TransformerWrapper(AggregatedTaggerWrapper):
         self.mean_aggregation = mean_aggregation
         self.net = net(in_channels=self.in_channels, out_channels=self.out_channels)
 
-        if attention_backend == "flex_attention":
+        if attention_backend == "flex":
             compile_flex_attention(package_name="lloca")
 
     def forward(self, embedding):
@@ -391,7 +391,7 @@ class LGATrWrapper(nn.Module):
         self.framesnet = framesnet  # not actually used
         assert isinstance(framesnet, IdentityFrames)
 
-        if attention_backend == "flex_attention":
+        if attention_backend == "flex":
             compile_flex_attention(package_name="lgatr")
 
     def forward(self, embedding):
@@ -767,7 +767,7 @@ class LGATrSlimWrapper(nn.Module):
         self.framesnet = framesnet  # not actually used
         assert isinstance(framesnet, IdentityFrames)
 
-        if attention_backend == "flex_attention":
+        if attention_backend == "flex":
             compile_flex_attention(package_name="lgatr")
 
     def forward(self, embedding):
@@ -877,16 +877,16 @@ def compile_flex_attention(package_name="lgatr"):
       transformers with xformers attention in our implementation.
     """
     if package_name == "lgatr":
-        import lgatr.primitives.attention_backends.flex as flex_attention
+        import lgatr.primitives.attention_backends.flex as flex
     elif package_name == "lloca":
-        import lloca.backbone.attention_backends.flex as flex_attention
+        import lloca.backbone.attention_backends.flex as flex
     else:
         raise ValueError(f"Unknown package {package_name}")
 
     if torch.cuda.is_available():
         # max-autotune strongly recommended for flex-attention with variable-length sequences,
         # see https://pytorch.org/blog/flexattention-for-inference/
-        flex_attention.attention = torch.compile(
-            flex_attention.attention,
+        flex.attention = torch.compile(
+            flex.attention,
             dynamic=True,
         )
