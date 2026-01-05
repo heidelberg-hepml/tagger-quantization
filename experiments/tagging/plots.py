@@ -24,7 +24,6 @@ def plot_mixer(cfg, plot_path, title, plot_dict):
                 out,
                 losses,
                 plot_dict["train_lr"],
-                parq_schedule=plot_dict.get("parq_schedule", None),
                 labels=labels,
                 logy=True,
             )

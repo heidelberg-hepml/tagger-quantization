@@ -348,7 +348,7 @@ def restore_model(model, original_params):
     return model
 
 
-@contextmanager  # to use as: with temporary_quantize(model, cfg):
+@contextmanager  # to use as: `with temporary_quantize(model, cfg):`
 def temporary_quantize(model, cfg):
     """
     Temporarily quantize model parameters for evaluation, then restore originals.

@@ -141,7 +141,7 @@ class QuantLayer(Module):
 
     def ste_quantize(self, input: Tensor) -> Tensor:
         """
-        Straight-Through Estimator to quantize  and weights
+        Straight-Through Estimator to quantize activations and weights
         """
         shape = input.shape
         if input.dim() > 2:
