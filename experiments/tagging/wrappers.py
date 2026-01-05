@@ -877,9 +877,9 @@ def compile_flex_attention(package_name="lgatr"):
       transformers with xformers attention in our implementation.
     """
     if package_name == "lgatr":
-        import lgatr.primitives.attention_backends.flex_attention as flex_attention
+        import lgatr.primitives.attention_backends.flex as flex_attention
     elif package_name == "lloca":
-        import lloca.backbone.attention_backends.flex_attention as flex_attention
+        import lloca.backbone.attention_backends.flex as flex_attention
     else:
         raise ValueError(f"Unknown package {package_name}")
 
