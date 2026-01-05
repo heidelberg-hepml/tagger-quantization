@@ -315,8 +315,8 @@ def quantize_model(model, cfg):
         bits = cfg.weightquant.bits
     else:
         raise ValueError(
-            "Quantization is not idempotent for quantizer "
-            f"{cfg.weightquant.quantizer} with {cfg.weightquant.bits} bits"
+            "Scale is not preserved over multiple quantizations for quantizer"
+            f" {cfg.weightquant.quantizer} with {cfg.weightquant.bits} bits"
         )
     modelname = cfg.model.net._target_.rsplit(".", 1)[-1]
     param_groups = init_parq_param_groups(model, cfg, modelname)

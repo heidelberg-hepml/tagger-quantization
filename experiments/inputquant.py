@@ -203,7 +203,6 @@ class QuantEquiLinear(QuantLayer, EquiLinear):
         **kwargs,
     ):
         super().__init__(
-            self,
             *args,
             quantizer=quantizer,
             bits=bits,
@@ -243,7 +242,6 @@ class QuantSlimEquiLinear(QuantLayer, SlimEquiLinear):
         **kwargs,
     ):
         super().__init__(
-            self,
             *args,
             quantizer=quantizer,
             bits=bits,
