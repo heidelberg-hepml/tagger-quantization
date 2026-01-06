@@ -130,8 +130,6 @@ class BaseExperiment:
 
         if self.cfg.inputquant.use:
             modelname = self.cfg.model.net._target_.rsplit(".", 1)[-1]
-            if self.cfg.weightquant.use:
-                self.cfg.inputquant.match_weightquant = False
             input_quantize(self.model, modelname, self.cfg.inputquant)
 
         if self.cfg.ema:

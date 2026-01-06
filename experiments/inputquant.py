@@ -143,6 +143,9 @@ class QuantLayer(Module):
         """
         Straight-Through Estimator to quantize activations and weights
         """
+        if input.numel() == 0:
+            # handle empty parameter tensors
+            return input
         shape = input.shape
         if input.dim() > 2:
             flat = input.view(input.size(0), -1)
