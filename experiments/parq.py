@@ -302,9 +302,15 @@ def quantize_model(model, cfg):
     """
     Quantize model parameters according to config settings.
 
-    Args:
-        model: The PyTorch model to quantize
-        cfg: Config containing weightquant settings
+    Parameters
+    ----------
+    model: The PyTorch model to quantize
+    cfg: Config containing weightquant settings
+
+    Returns
+    -------
+    model: The PyTorch model with quantized weights
+    original_params: Dictionary of original parameters indexed by parameter id
     """
     if cfg.weightquant.bits == 0:
         # Max uniform quantization with two bits preserves ternary quantization
@@ -337,9 +343,14 @@ def restore_model(model, original_params):
     """
     Restore model parameters from original_params.
 
-    Args:
-        model: The PyTorch model to restore
-        original_params: Dictionary of original parameters
+    Parameters
+    ----------
+    model: The PyTorch model to restore
+    original_params: Dictionary of original parameters indexed by parameter id
+
+    Returns
+    -------
+    model: The PyTorch model with parameters restored from original_params
     """
     for p in model.parameters():
         param_id = id(p)
@@ -348,18 +359,19 @@ def restore_model(model, original_params):
     return model
 
 
-@contextmanager  # to use as: `with temporary_quantize(model, cfg):`
+@contextmanager
 def temporary_quantize(model, cfg):
     """
-    Temporarily quantize model parameters for evaluation, then restore originals.
+    Yields quantized model for evaluation, then restore .
 
-    Args:
-        model: The PyTorch model to quantize
-        cfg: Config containing weightquant settings
+    Parameters
+    ----------
+    model: The PyTorch model to quantize
+    cfg: Config containing weightquant settings
     """
 
     model, original_params = quantize_model(model, cfg)
-
-    yield
-
-    restore_model(model, original_params)
+    try:
+        yield
+    finally:
+        restore_model(model, original_params)
