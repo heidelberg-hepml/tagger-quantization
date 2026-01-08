@@ -69,7 +69,6 @@ def input_quantize_module(module, cfg):
         quant_per_channel=cfg.quant_per_channel,
         match_weightquant=cfg.match_weightquant,
         quantize_output=cfg.quantize_output,
-        quantized_training=cfg.quantized_training,
     )
     for name, child in list(module.named_children()):
         if isinstance(child, Linear):
@@ -115,7 +114,6 @@ class QuantLayer(Module):
         quant_per_channel: bool = False,
         match_weightquant: bool = True,
         quantize_output: bool = False,
-        quantized_training: bool = True,
         **kwargs,
     ):
         if match_weightquant:
@@ -132,12 +130,7 @@ class QuantLayer(Module):
         self.match_weightquant = match_weightquant
         self.quantize_output = quantize_output
         self.dim = 1 if quant_per_channel else None
-        self.quantized_training = quantized_training
         super().__init__(*args, **kwargs)
-
-    @property
-    def quantize(self) -> bool:
-        return self.quantized_training or (not self.training)
 
     def ste_quantize(self, input: Tensor) -> Tensor:
         """
@@ -167,7 +160,6 @@ class QuantLinear(QuantLayer, Linear):
         quant_per_channel: bool = False,
         match_weightquant: bool = True,
         quantize_output: bool = True,
-        quantized_training: bool = True,
         **kwargs,
     ):
         super().__init__(
@@ -177,7 +169,6 @@ class QuantLinear(QuantLayer, Linear):
             quant_per_channel=quant_per_channel,
             match_weightquant=match_weightquant,
             quantize_output=quantize_output,
-            quantized_training=quantized_training,
             **kwargs,
         )
 
@@ -202,7 +193,6 @@ class QuantEquiLinear(QuantLayer, EquiLinear):
         quant_per_channel: bool = False,
         match_weightquant: bool = True,
         quantize_output: bool = True,
-        quantized_training: bool = True,
         **kwargs,
     ):
         super().__init__(
@@ -212,7 +202,6 @@ class QuantEquiLinear(QuantLayer, EquiLinear):
             quant_per_channel=quant_per_channel,
             match_weightquant=match_weightquant,
             quantize_output=quantize_output,
-            quantized_training=quantized_training,
             **kwargs,
         )
 
@@ -241,7 +230,6 @@ class QuantSlimEquiLinear(QuantLayer, SlimEquiLinear):
         quant_per_channel: bool = False,
         match_weightquant: bool = True,
         quantize_output: bool = True,
-        quantized_training: bool = True,
         **kwargs,
     ):
         super().__init__(
@@ -251,7 +239,6 @@ class QuantSlimEquiLinear(QuantLayer, SlimEquiLinear):
             quant_per_channel=quant_per_channel,
             match_weightquant=match_weightquant,
             quantize_output=quantize_output,
-            quantized_training=quantized_training,
             **kwargs,
         )
 
