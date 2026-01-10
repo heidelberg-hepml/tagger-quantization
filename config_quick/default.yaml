@@ -37,7 +37,6 @@ inputquant:
  quantizer: float
  quant_per_channel: false
  match_weightquant: true
- quantize_output: true
 
  mlp: true
  attn: true
