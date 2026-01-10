@@ -418,7 +418,7 @@ class BaseExperiment:
         LOGGER.debug(
             f"Using optimizer {self.cfg.training.optimizer} with lr={self.cfg.training.lr}"
         )
-        if self.cfg.weightquant.use and self.cfg.weightquant.prox_map != "naive":
+        if self.cfg.weightquant.use and self.cfg.weightquant.prox_map is not None:
             self.optimizer = init_parq_optimizer(self.optimizer, self.cfg)
 
         # load existing optimizer if specified
@@ -865,7 +865,8 @@ class BaseExperiment:
             filename = f"model_run{self.cfg.run_idx}.pt"
         model_path = os.path.join(self.cfg.run_dir, "models", filename)
 
-        if self.cfg.weightquant.use and self.cfg.weightquant.prox_map == "naive":
+        if self.cfg.weightquant.use and self.cfg.weightquant.prox_map is None:
+            # Post-Training Quantization
             quantize_model(self.model, self.cfg)
         LOGGER.debug(f"Saving model at {model_path}")
         torch.save(
