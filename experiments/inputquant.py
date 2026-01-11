@@ -4,7 +4,7 @@ from lgatr.nets.lgatr_slim import Linear as LorentzLinear
 from lloca.equivectors import MLPVectors
 from lloca.framesnet.equi_frames import LearnedFrames
 from torch import Tensor
-from torch.nn import Linear
+from torch.nn import Conv1d, Linear
 
 from .parq import get_quantizer
 
@@ -45,6 +45,14 @@ def input_quantize_transformer(model, cfg_inputs):
 
 
 def input_quantize_ParT(model, cfg_inputs):
+    if cfg_inputs.mlp:
+        for i, m in enumerate(model.net.embed.embed):
+            if i > 3:
+                input_quantize_module(module=m, cfg=cfg_inputs)
+        for i, m in enumerate(model.net.pair_embed.embed):
+            if i > 3:
+                input_quantize_module(module=m, cfg=cfg_inputs)
+
     for block in model.net.blocks + model.net.cls_blocks:
         if cfg_inputs.attn:
             input_quantize_module(
@@ -74,6 +82,15 @@ def input_quantize_module(module, cfg):
             new_layer = QuantLinear(
                 child.in_features,
                 child.out_features,
+                bias=(child.bias is not None),
+                **quant_kwargs,
+            )
+            module._modules[name] = new_layer
+        elif isinstance(child, Conv1d):
+            new_layer = QuantConv1d(
+                child.in_channels,
+                child.out_channels,
+                child.kernel_size,
                 bias=(child.bias is not None),
                 **quant_kwargs,
             )
@@ -144,6 +161,33 @@ class QuantLinear(Linear, QuantLayer):
         **kwargs,
     ):
         Linear.__init__(self, *args, **kwargs)
+        QuantLayer.__init__(
+            self,
+            quantizer=quantizer,
+            bits=bits,
+            quant_per_channel=quant_per_channel,
+            quantize_output=quantize_output,
+        )
+
+    def forward(self, input: Tensor) -> Tensor:
+        input = QuantLayer.ste_quantize(self, input)
+        output = Linear.forward(self, input)
+        if self.quantize_output:
+            output = QuantLayer.ste_quantize(self, output)
+        return output
+
+
+class QuantConv1d(Conv1d, QuantLayer):
+    def __init__(
+        self,
+        *args,
+        quantizer: str = "uniform",
+        bits: int = 8,
+        quant_per_channel: bool = False,
+        quantize_output: bool = True,
+        **kwargs,
+    ):
+        Conv1d.__init__(self, *args, **kwargs)
         QuantLayer.__init__(
             self,
             quantizer=quantizer,
