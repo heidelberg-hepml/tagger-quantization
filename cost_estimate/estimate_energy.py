@@ -13,8 +13,6 @@ DTYPES = [
     ("float16", "float16"),
     ("float8", "float8"),
     ("float8", "ternary"),
-    ("int8", "int8"),
-    ("int8", "ternary"),
 ]
 
 
@@ -23,7 +21,7 @@ def get_arch_kwargs(arch):
         return "transformer", dict(blocks=10, channels=128, mlp_ratio=4)
     elif arch == "particletransformer":
         return "particletransformer", dict(
-            blocks=12, channels=128, channels_pair=64, layers_pair=3, mlp_ratio=4
+            blocks=10, channels=128, channels_pair=64, layers_pair=3, mlp_ratio=4
         )
     elif arch == "llocatransformer":
         return "llocatransformer", dict(
