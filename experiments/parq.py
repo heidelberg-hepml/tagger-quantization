@@ -154,7 +154,11 @@ def init_param_groups_ParticleTransformer(model, cfg):
         else:
             params_mlp += list(m.parameters())
     params_in += list(model.net.embed.input_bn.parameters())
-    params_in += list(model.net.pair_embed.parameters())
+    for i, m in enumerate(model.net.pair_embed.embed):
+        if i <= 3:
+            params_in += list(m.parameters())
+        else:
+            params_mlp += list(m.parameters())
     params_out = list(model.net.fc.parameters())
 
     for block in model.net.blocks + model.net.cls_blocks:

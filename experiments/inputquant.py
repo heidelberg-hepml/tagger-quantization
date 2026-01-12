@@ -6,7 +6,7 @@ from lgatr.nets.lgatr_slim import Linear as SlimEquiLinear
 from lloca.equivectors import MLPVectors
 from lloca.framesnet.equi_frames import LearnedFrames
 from torch import Tensor
-from torch.nn import Linear, Module
+from torch.nn import Conv1d, Linear, Module
 
 from .parq import get_quantizer
 
@@ -47,6 +47,14 @@ def input_quantize_transformer(model, cfg_inputs):
 
 
 def input_quantize_ParT(model, cfg_inputs):
+    if cfg_inputs.mlp:
+        for i, m in enumerate(model.net.embed.embed):
+            if i > 3:
+                input_quantize_module(module=m, cfg=cfg_inputs)
+        for i, m in enumerate(model.net.pair_embed.embed):
+            if i > 3:
+                input_quantize_module(module=m, cfg=cfg_inputs)
+
     for block in model.net.blocks + model.net.cls_blocks:
         if cfg_inputs.attn:
             input_quantize_module(
@@ -76,6 +84,15 @@ def input_quantize_module(module, cfg):
             new_layer = QuantLinear(
                 child.in_features,
                 child.out_features,
+                bias=(child.bias is not None),
+                **quant_kwargs,
+            )
+            module._modules[name] = new_layer
+        elif isinstance(child, Conv1d):
+            new_layer = QuantConv1d(
+                child.in_channels,
+                child.out_channels,
+                child.kernel_size,
                 bias=(child.bias is not None),
                 **quant_kwargs,
             )
@@ -155,6 +172,32 @@ class QuantLayer(Module):
 
 
 class QuantLinear(QuantLayer, Linear):
+    def __init__(
+        self,
+        *args,
+        quantizer: str = "float",
+        bits: int = 8,
+        quant_per_channel: bool = False,
+        match_weightquant: bool = True,
+        **kwargs,
+    ):
+        super().__init__(
+            *args,
+            quantizer=quantizer,
+            bits=bits,
+            quant_per_channel=quant_per_channel,
+            match_weightquant=match_weightquant,
+            **kwargs,
+        )
+
+    def forward(self, input: Tensor) -> Tensor:
+        input = QuantLayer.ste_quantize(self, input)
+        with self.quantize_params():
+            output = Linear.forward(self, input)
+        return output
+
+
+class QuantConv1d(QuantLayer, Conv1d):
     def __init__(
         self,
         *args,

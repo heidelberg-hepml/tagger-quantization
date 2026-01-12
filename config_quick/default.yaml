@@ -3,6 +3,7 @@ exp_type: ???
 run_name: null
 base_dir: .
 
+gpus: -1
 jobid: null
 seed: null
 debug: false
@@ -43,7 +44,7 @@ inputquant:
  framesnet: true
 
 warm_start_idx: null
-save: true
+save: false
 use_mlflow: false
 save_source: true
 ema: false

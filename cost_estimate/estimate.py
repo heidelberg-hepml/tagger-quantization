@@ -151,7 +151,7 @@ def particletransformer_cost(
         blocks=blocks,
         seqlen=seqlen,
         channels=channels,
-        mlp_ratio=mlp_ratio,
+        mlp_ratio=mlp_ratio * 1.5,  # ParT uses GLU
         attn_ratio=attn_ratio,
         factor_default=factor_default,
         factor_aw=factor_aw,
@@ -159,12 +159,16 @@ def particletransformer_cost(
         factor_fpfp=factor_fpfp,
     )
 
-    # learnable attention bias
-    # - factor 4 for 4 edge features mij, dR2, kT, z
-    cost_pairembed = 4 * seqlen**2 * channels_pair**2 * factor_aw
+    # precomput learnable attention bias
+    cost_pairembed = seqlen**2 * channels_pair**2 * factor_aw
     cost_pairembed *= layers_pair
 
-    cost = cost_transformer + cost_pairembed
+    # embedding MLP
+    cost_embed = linear_cost(
+        dim_1=channels, dim_2=channels * mlp_ratio, factor=factor_aw, factor_bias=factor_aa
+    )
+
+    cost = cost_transformer + cost_pairembed + cost_embed
     return cost
 
 
