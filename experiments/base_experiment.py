@@ -3,6 +3,7 @@ import os
 import resource
 import time
 import zipfile
+from contextlib import nullcontext
 from pathlib import Path
 
 import mlflow
@@ -23,7 +24,6 @@ from experiments.mlflow import log_mlflow
 from experiments.parq import (
     init_parq_optimizer,
     init_parq_param_groups,
-    quantize_model,
     temporary_quantize,
 )
 from experiments.ranger import Ranger
@@ -618,7 +618,7 @@ class BaseExperiment:
                     self.scheduler.step(val_loss)
 
                 if self.cfg.evaluation.eval_quantized and self.cfg.weightquant.use:
-                    self._validate_quantized(step)
+                    self._validate(step, quantized=True)
 
             # output
             if step == 0:
@@ -788,12 +788,13 @@ class BaseExperiment:
             for key, values in metrics.items():
                 log_mlflow(f"train.{key}", values, step=step)
 
-    def _validate(self, step):
+    @torch.no_grad()
+    def _validate(self, step, quantized=False):
         losses = []
         metrics = self._init_metrics()
 
         self.model.eval()
-        with torch.no_grad():
+        with temporary_quantize(self.model, self.cfg) if quantized else nullcontext():
             for data in self.val_loader:
                 # use EMA for validation if available
                 if self.ema is not None:
@@ -809,38 +810,23 @@ class BaseExperiment:
                 for key, value in metric.items():
                     metrics[key].append(value.cpu().item())
         val_loss = np.mean(losses)
-        self.val_loss.append(val_loss)
-        for key, values in metrics.items():
-            self.val_metrics[key].append(np.mean(values))
+        if quantized:
+            self.val_loss_quantized.append(val_loss)
+            for key, values in metrics.items():
+                self.val_metrics_quantized[key].append(np.mean(values))
+        else:
+            self.val_loss.append(val_loss)
+            for key, values in metrics.items():
+                self.val_metrics[key].append(np.mean(values))
         if self.cfg.use_mlflow:
-            log_mlflow("val.loss", val_loss, step=step)
-            for key, values in self.val_metrics.items():
-                log_mlflow(f"val.{key}", values[-1], step=step)
-        return val_loss
-
-    def _validate_quantized(self, step):
-        losses = []
-        metrics = self._init_metrics()
-
-        self.model.eval()
-        with torch.no_grad(), temporary_quantize(self.model, self.cfg):
-            for data in self.val_loader:
-                loss, metric = self._batch_loss(data)
-
-                if self.world_size > 1:
-                    dist.all_reduce(loss, op=dist.ReduceOp.SUM)
-                    loss /= self.world_size
-                losses.append(loss.cpu().item())
-                for key, value in metric.items():
-                    metrics[key].append(value.cpu().item())
-        val_loss = np.mean(losses)
-        self.val_loss_quantized.append(val_loss)
-        for key, values in metrics.items():
-            self.val_metrics_quantized[key].append(np.mean(values))
-        if self.cfg.use_mlflow:
-            log_mlflow("val_quantized.loss", val_loss, step=step)
-            for key, values in self.val_metrics_quantized.items():
-                log_mlflow(f"val_quantized.{key}", values[-1], step=step)
+            if quantized:
+                log_mlflow("val_quantized.loss", val_loss, step=step)
+                for key, values in self.val_metrics.items():
+                    log_mlflow(f"val_quantized.{key}", values[-1], step=step)
+            else:
+                log_mlflow("val.loss", val_loss, step=step)
+                for key, values in self.val_metrics.items():
+                    log_mlflow(f"val.{key}", values[-1], step=step)
         return val_loss
 
     def _save_config(self, filename, to_mlflow=False):
@@ -857,7 +843,7 @@ class BaseExperiment:
             for key, value in flatten_dict(self.cfg).items():
                 log_mlflow(key, value, kind="param")
 
-    def _save_model(self, filename=None):
+    def _save_model(self, filename=None, final=False):
         if not self.cfg.save:
             return
 
@@ -865,9 +851,6 @@ class BaseExperiment:
             filename = f"model_run{self.cfg.run_idx}.pt"
         model_path = os.path.join(self.cfg.run_dir, "models", filename)
 
-        if self.cfg.weightquant.use and self.cfg.weightquant.prox_map is None:
-            # Post-Training Quantization
-            quantize_model(self.model, self.cfg)
         LOGGER.debug(f"Saving model at {model_path}")
         torch.save(
             {

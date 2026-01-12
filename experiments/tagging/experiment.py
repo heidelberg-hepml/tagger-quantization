@@ -1,5 +1,6 @@
 import os
 import time
+from contextlib import nullcontext
 
 import numpy as np
 import torch
@@ -208,11 +209,19 @@ class TaggingExperiment(BaseExperiment):
                         loader_dict[set_label], f"{set_label}_ema", mode="eval"
                     )
 
-                self._evaluate_single(loader_dict[set_label], set_label, mode="eval")
+                self._evaluate_single(
+                    loader_dict[set_label],
+                    set_label,
+                    mode="eval",
+                    quantized=self.cfg.weightquant.use,
+                )
 
             else:
                 self.results[set_label] = self._evaluate_single(
-                    loader_dict[set_label], set_label, mode="eval"
+                    loader_dict[set_label],
+                    set_label,
+                    mode="eval",
+                    quantized=self.cfg.weightquant.use,
                 )
 
     @torch.no_grad()
@@ -228,11 +237,12 @@ class TaggingExperiment(BaseExperiment):
 
         # predictions
         labels_true, labels_predict = [], []
-        self.model.eval()
-        for batch in loader:
-            y_pred, label, _, _ = self._get_ypred_and_label(batch)
-            labels_true.append(label.cpu().float())
-            labels_predict.append(y_pred.cpu().float())
+        with temporary_quantize(self.model, self.cfg) if quantized else nullcontext():
+            self.model.eval()
+            for batch in loader:
+                y_pred, label, _, _ = self._get_ypred_and_label(batch)
+                labels_true.append(label.cpu().float())
+                labels_predict.append(y_pred.cpu().float())
         labels_true, labels_predict = torch.cat(labels_true), torch.cat(labels_predict)
 
         if mode == "eval":
@@ -342,21 +352,18 @@ class TaggingExperiment(BaseExperiment):
         self.loss = torch.nn.BCEWithLogitsLoss()
 
     # overwrite _validate method to compute metrics over the full validation set
-    def _validate(self, step):
+    def _validate(self, step, quantized=False):
         if self.ema is not None:
             with self.ema.average_parameters():
                 metrics = self._evaluate_single(self.val_loader, "val", mode="val", step=step)
         else:
-            metrics = self._evaluate_single(self.val_loader, "val", mode="val", step=step)
-        self.val_loss.append(metrics["loss"])
-        return metrics["loss"]
-
-    def _validate_quantized(self, step):
-        with torch.no_grad(), temporary_quantize(self.model, self.cfg):
             metrics = self._evaluate_single(
-                self.val_loader, "val", mode="val", step=step, quantized=True
+                self.val_loader, "val", mode="val", step=step, quantized=quantized
             )
-        self.val_loss_quantized.append(metrics["loss"])
+        if quantized:
+            self.val_loss_quantized.append(metrics["loss"])
+        else:
+            self.val_loss.append(metrics["loss"])
         return metrics["loss"]
 
     def _batch_loss(self, batch):

@@ -177,7 +177,6 @@ class QuantLinear(QuantLayer, Linear):
         input = QuantLayer.ste_quantize(self, input)
         with self.quantize_params():
             output = Linear.forward(self, input)
-        output = QuantLayer.ste_quantize(self, output)
         return output
 
 
