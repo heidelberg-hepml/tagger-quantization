@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 from lloca.equivectors import MLPVectors
 from lloca.framesnet.equi_frames import LearnedFrames
 from parq.optim import (
@@ -16,7 +18,6 @@ from parq.quant import (
 from parq.quant.uniform import AsymUnifQuantizer
 
 from experiments.floatquant import FloatQuantizer
-from experiments.logger import LOGGER
 
 
 def get_quantizer(name, bits):
@@ -32,7 +33,7 @@ def get_quantizer(name, bits):
     elif name == "maxuniform":
         return MaxUnifQuantizer()
     elif name == "float":
-        assert bits in [4, 6, 8], "Float quantizer only supports 4, 6 or 8 bits"
+        assert bits in [4, 6, 8, 16], "Float quantizer only supports 4, 6, 8 or 16 bits"
         return FloatQuantizer(bits)
     else:
         raise ValueError(f"Unknown quantizer {name}")
@@ -52,6 +53,7 @@ def init_parq_optimizer(base_optimizer, cfg):
         prox_map = ProxHardQuant()
     elif cfg.weightquant.prox_map == "binaryrelax":
         prox_map = ProxBinaryRelax(start_step, end_step)
+
     else:
         raise ValueError(f"Prox map {cfg.weightquant.prox_map} not implemented")
 
@@ -81,18 +83,6 @@ def init_parq_param_groups(model, cfg, modelname, param_groups=None):
         param_groups = init_param_groups_ParticleTransformer(model, cfg)
     else:
         raise NotImplementedError(f"PARQ not implemented for model {modelname}")
-
-    num_params_total = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    num_params_quantized = sum(
-        p.numel()
-        for group in param_groups
-        for p in group["params"]
-        if p.requires_grad and "quant_bits" in group
-    )
-    LOGGER.info(
-        f"Fraction of quantized parameters: {num_params_quantized}/{num_params_total} ({num_params_quantized / num_params_total * 100:.2f}%)"
-    )
-
     return param_groups
 
 
@@ -306,3 +296,82 @@ def param_groups_transformer_helper(
     ]
 
     return param_groups
+
+
+def quantize_model(model, cfg):
+    """
+    Quantize model parameters according to config settings.
+
+    Parameters
+    ----------
+    model: The PyTorch model to quantize
+    cfg: Config containing weightquant settings
+
+    Returns
+    -------
+    model: The PyTorch model with quantized weights
+    original_params: Dictionary of original parameters indexed by parameter id
+    """
+    if cfg.weightquant.bits == 0:
+        # Max uniform quantization with two bits preserves ternary quantization
+        quantizer = get_quantizer("maxuniform", 2)
+        bits = 2
+    elif cfg.weightquant.quantizer in ["float", "maxuniform"]:
+        quantizer = get_quantizer(cfg.weightquant.quantizer, cfg.weightquant.bits)
+        bits = cfg.weightquant.bits
+    else:
+        raise ValueError(
+            "Scale is not preserved over multiple quantizations for quantizer"
+            f" {cfg.weightquant.quantizer} with {cfg.weightquant.bits} bits"
+        )
+    modelname = cfg.model.net._target_.rsplit(".", 1)[-1]
+    param_groups = init_parq_param_groups(model, cfg, modelname)
+    original_params = {}
+    # Quantize parameters that have quant_bits specified
+    for group in param_groups:
+        if "quant_bits" in group:
+            for p in group["params"]:
+                # Store original
+                param_id = id(p)
+                original_params[param_id] = p.data.clone()
+                # Quantize
+                p.data, _ = quantizer.quantize(p=p.data, b=bits)
+    return model, original_params
+
+
+def restore_model(model, original_params):
+    """
+    Restore model parameters from original_params.
+
+    Parameters
+    ----------
+    model: The PyTorch model to restore
+    original_params: Dictionary of original parameters indexed by parameter id
+
+    Returns
+    -------
+    model: The PyTorch model with parameters restored from original_params
+    """
+    for p in model.parameters():
+        param_id = id(p)
+        if param_id in original_params:
+            p.data = original_params[param_id]
+    return model
+
+
+@contextmanager
+def temporary_quantize(model, cfg):
+    """
+    Yields quantized model for evaluation, then restore .
+
+    Parameters
+    ----------
+    model: The PyTorch model to quantize
+    cfg: Config containing weightquant settings
+    """
+
+    model, original_params = quantize_model(model, cfg)
+    try:
+        yield
+    finally:
+        restore_model(model, original_params)
