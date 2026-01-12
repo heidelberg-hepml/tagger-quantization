@@ -36,6 +36,7 @@ inputquant:
  use: false
  bits: 8
  quantizer: float
+ static: true
  quant_per_channel: false
  match_weightquant: true
 

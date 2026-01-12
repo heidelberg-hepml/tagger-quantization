@@ -76,6 +76,7 @@ def input_quantize_module(module, cfg):
     quant_kwargs = dict(
         quantizer=cfg.quantizer,
         bits=cfg.bits,
+        static=cfg.static,
         quant_per_channel=cfg.quant_per_channel,
         match_weightquant=cfg.match_weightquant,
     )
@@ -129,6 +130,7 @@ class QuantLayer(Module):
         *args,
         quantizer: str = "float",
         bits: int = 8,
+        static: bool = True,
         quant_per_channel: bool = False,
         match_weightquant: bool = True,
         **kwargs,
@@ -138,6 +140,15 @@ class QuantLayer(Module):
         self.match_weightquant = match_weightquant
         self.dim = 1 if quant_per_channel else None
         super().__init__(*args, **kwargs)
+        self.static = static
+        if static:
+            self.register_buffer("min_val", torch.tensor(float("inf")))
+            self.register_buffer("max_val", torch.tensor(float("-inf")))
+            self.register_buffer("scale", torch.tensor(1.0))
+            self.register_buffer("zeropoint", torch.tensor(0.0))
+            self.obs_count = 0
+            self.obs_stop = 100000
+            self.quantile = 1e-3
 
     def ste_quantize(self, input: Tensor) -> Tensor:
         """
@@ -152,7 +163,12 @@ class QuantLayer(Module):
         else:
             flat = input
         with torch.no_grad():
-            flat_q, _ = self.quantizer.quantize(flat, self.bits, self.dim)
+            if self.static:
+                if self.training and self.obs_count < self.obs_stop:
+                    self.observe(input)
+                flat_q = quantize_int8(flat, self.scale, self.zeropoint)
+            else:
+                flat_q, _ = self.quantizer.quantize(flat, self.bits, self.dim)
         input_q = flat_q.view(shape)
         output = input + (input_q - input).detach()
         return output
@@ -170,6 +186,25 @@ class QuantLayer(Module):
             for param, original in zip(self.parameters(), original_params, strict=True):
                 param.data = original
 
+    def observe(self, input: Tensor):
+        flat = input.detach().reshape(-1)
+        q_min, q_max = torch.quantile(flat, self.quantile), torch.quantile(flat, 1 - self.quantile)
+        if self.obs_count == 0:
+            self.min_val = q_min
+            self.max_val = q_max
+        else:
+            momentum = self.obs_count / (self.obs_count + 1)
+            update_weight = 1 / (self.obs_count + 1)
+            self.min_val = momentum * self.min_val + update_weight * q_min
+            self.max_val = momentum * self.max_val + update_weight * q_max
+        self.obs_count += 1
+        range_val = torch.clamp(
+            self.max_val - self.min_val,
+            min=torch.tensor(torch.finfo(self.scale.dtype).eps, device=self.scale.device),
+        )
+        self.scale = range_val / 256
+        self.zeropoint = -128 - torch.round(self.min_val / self.scale)
+
 
 class QuantLinear(QuantLayer, Linear):
     def __init__(
@@ -177,6 +212,7 @@ class QuantLinear(QuantLayer, Linear):
         *args,
         quantizer: str = "float",
         bits: int = 8,
+        static: bool = True,
         quant_per_channel: bool = False,
         match_weightquant: bool = True,
         **kwargs,
@@ -185,6 +221,7 @@ class QuantLinear(QuantLayer, Linear):
             *args,
             quantizer=quantizer,
             bits=bits,
+            static=static,
             quant_per_channel=quant_per_channel,
             match_weightquant=match_weightquant,
             **kwargs,
@@ -229,6 +266,7 @@ class QuantEquiLinear(QuantLayer, EquiLinear):
         *args,
         quantizer: str = "float",
         bits: int = 8,
+        static: bool = True,
         quant_per_channel: bool = False,
         match_weightquant: bool = True,
         **kwargs,
@@ -237,6 +275,7 @@ class QuantEquiLinear(QuantLayer, EquiLinear):
             *args,
             quantizer=quantizer,
             bits=bits,
+            static=static,
             quant_per_channel=quant_per_channel,
             match_weightquant=match_weightquant,
             **kwargs,
@@ -257,6 +296,7 @@ class QuantSlimEquiLinear(QuantLayer, SlimEquiLinear):
         *args,
         quantizer: str = "float",
         bits: int = 8,
+        static: bool = True,
         quant_per_channel: bool = False,
         match_weightquant: bool = True,
         **kwargs,
@@ -265,6 +305,7 @@ class QuantSlimEquiLinear(QuantLayer, SlimEquiLinear):
             *args,
             quantizer=quantizer,
             bits=bits,
+            static=static,
             quant_per_channel=quant_per_channel,
             match_weightquant=match_weightquant,
             **kwargs,
@@ -276,3 +317,11 @@ class QuantSlimEquiLinear(QuantLayer, SlimEquiLinear):
         with self.quantize_params():
             vectors_out, scalars_out = SlimEquiLinear.forward(self, vectors, scalars)
         return vectors_out, scalars_out
+
+
+def quantize_int8(tensor: Tensor, scale: Tensor, zeropoint: Tensor) -> Tensor:
+    qmin = -128
+    qmax = 127
+    tensor_q = torch.clamp(torch.round(tensor / scale) + zeropoint, qmin, qmax)
+    tensor_q = (tensor_q - zeropoint) * scale
+    return tensor_q
