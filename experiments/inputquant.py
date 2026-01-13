@@ -1,4 +1,4 @@
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 
 import torch
 from lgatr.layers import EquiLinear
@@ -140,18 +140,19 @@ class QuantLayer(Module):
         self.match_weightquant = match_weightquant
         self.dim = 1 if quant_per_channel else None
         super().__init__(*args, **kwargs)
-        self.static = getattr(static, "use", False)
+        self.static = static["use"]
         if self.static:
-            self.register_buffer("min_val", torch.tensor(-1.0))
-            self.register_buffer("max_val", torch.tensor(1.0))
-            self.register_buffer("scale", None)
-            self.register_buffer("zeropoint", None)
+            self.min_val = -1
+            self.max_val = 1
+            self.scale = 1.0
+            self.zeropoint = 0.0
             self.obs_count = 0
             self.obs_start = static["observer_start"]
             self.obs_stop = static["observer_stop"]
-            self.momentum = static["momentum"]
+            self.beta = static["beta"]
+            self.ema = static["ema"]
             q = static["quantile"]
-            self.register_buffer("quantile", torch.tensor([q, 1 - q]))
+            self.quantile = q
 
     def ste_quantize(self, input: Tensor) -> Tensor:
         """
@@ -171,9 +172,14 @@ class QuantLayer(Module):
                     if self.obs_count < self.obs_start:
                         # Dynamic quantization phase
                         flat_q = quantize_int8(flat)
+                        self.obs_count += 1
                     elif self.obs_count < self.obs_stop:
                         # Observation + quantization with running statistics
                         self.observe(input)
+                        self.obs_count += 1
+                        flat_q = quantize_int8(flat, self.scale, self.zeropoint)
+                    else:
+                        # Quantization with fixed statistics
                         flat_q = quantize_int8(flat, self.scale, self.zeropoint)
                 else:
                     # Quantization with fixed statistics
@@ -190,7 +196,10 @@ class QuantLayer(Module):
         for param in self.parameters():
             original_params.append(param.data.clone())
             if self.match_weightquant:
-                param.data = self.ste_quantize(param.data)
+                if self.static:
+                    param.data = quantize_int8(param.data)
+                else:
+                    param.data = self.ste_quantize(param.data)
         try:
             yield
         finally:
@@ -200,22 +209,21 @@ class QuantLayer(Module):
     @torch.no_grad()
     def observe(self, input: Tensor):
         flat = input.detach().reshape(-1)
-        quantiles = torch.quantile(input=flat, q=self.quantile)
-        if self.obs_count == 0:
-            self.min_val = quantiles[0]
-            self.max_val = quantiles[1]
+        q_min = torch.quantile(input=flat, q=self.quantile).item()
+        q_max = torch.quantile(input=flat, q=1 - self.quantile).item()
+        if self.obs_count == self.obs_start:
+            self.min_val = q_min
+            self.max_val = q_max
         else:
-            momentum = self.momentum / (1 - self.momentum ** (self.obs_count + 1))
-            update_weight = (1 - self.momentum) / (1 - self.momentum ** (self.obs_count + 1))
-            self.min_val = momentum * self.min_val + update_weight * quantiles[0]
-            self.max_val = momentum * self.max_val + update_weight * quantiles[1]
-        self.obs_count += 1
-        range_val = torch.clamp(
-            self.max_val - self.min_val,
-            min=torch.tensor(torch.finfo(input.dtype).eps, device=input.device),
-        )
-        self.scale = range_val / 256
-        self.zeropoint = -128 - torch.round(self.min_val / self.scale)
+            if self.ema:
+                self.min_val = self.beta * self.min_val + (1 - self.beta) * q_min
+                self.max_val = self.beta * self.max_val + (1 - self.beta) * q_max
+            else:
+                self.min_val = min(self.min_val, q_min)
+                self.max_val = max(self.max_val, q_max)
+        range_val = max(self.max_val - self.min_val, torch.finfo(input.dtype).eps)
+        self.scale = range_val / 255
+        self.zeropoint = -128 - round(self.min_val / self.scale)
 
 
 class QuantLinear(QuantLayer, Linear):
@@ -241,7 +249,7 @@ class QuantLinear(QuantLayer, Linear):
 
     def forward(self, input: Tensor) -> Tensor:
         input = QuantLayer.ste_quantize(self, input)
-        with self.quantize_params():
+        with self.quantize_params() if self.match_weightquant else nullcontext():
             output = Linear.forward(self, input)
         return output
 
@@ -252,6 +260,7 @@ class QuantConv1d(QuantLayer, Conv1d):
         *args,
         quantizer: str = "float",
         bits: int = 8,
+        static: dict = {},
         quant_per_channel: bool = False,
         match_weightquant: bool = True,
         **kwargs,
@@ -260,6 +269,7 @@ class QuantConv1d(QuantLayer, Conv1d):
             *args,
             quantizer=quantizer,
             bits=bits,
+            static=static,
             quant_per_channel=quant_per_channel,
             match_weightquant=match_weightquant,
             **kwargs,
@@ -267,8 +277,8 @@ class QuantConv1d(QuantLayer, Conv1d):
 
     def forward(self, input: Tensor) -> Tensor:
         input = QuantLayer.ste_quantize(self, input)
-        with self.quantize_params():
-            output = Linear.forward(self, input)
+        with self.quantize_params() if self.match_weightquant else nullcontext():
+            output = Conv1d.forward(self, input)
         return output
 
 
@@ -297,7 +307,7 @@ class QuantEquiLinear(QuantLayer, EquiLinear):
         multivectors = QuantLayer.ste_quantize(self, multivectors)
         if scalars is not None:
             scalars = QuantLayer.ste_quantize(self, scalars)
-        with self.quantize_params():
+        with self.quantize_params() if self.match_weightquant else nullcontext():
             output_mv, output_s = EquiLinear.forward(self, multivectors, scalars)
         return output_mv, output_s
 
@@ -326,7 +336,7 @@ class QuantSlimEquiLinear(QuantLayer, SlimEquiLinear):
     def forward(self, vectors: Tensor, scalars: Tensor) -> tuple[Tensor, Tensor]:
         vectors = QuantLayer.ste_quantize(self, vectors)
         scalars = QuantLayer.ste_quantize(self, scalars)
-        with self.quantize_params():
+        with self.quantize_params() if self.match_weightquant else nullcontext():
             vectors_out, scalars_out = SlimEquiLinear.forward(self, vectors, scalars)
         return vectors_out, scalars_out
 
@@ -337,7 +347,7 @@ def quantize_int8(
     if scale is None or zeropoint is None:
         min_val = tensor.min()
         max_val = tensor.max()
-        scale = (max_val - min_val) / 255.0
+        scale = torch.clamp(max_val - min_val, min=torch.finfo(tensor.dtype).eps / 255.0)
         zeropoint = -128 - torch.round(min_val / scale)
     qmin = -128
     qmax = 127

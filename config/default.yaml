@@ -41,7 +41,8 @@ inputquant:
 
  static:
    use: false
-   momentum: 0.99
+   ema: true
+   beta: 0.99
    quantile: 1e-3
    observer_start: 0
    observer_stop: 10000
