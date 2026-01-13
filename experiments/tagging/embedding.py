@@ -114,12 +114,12 @@ def embed_tagging_data(fourmomenta, scalars, ptr, cfg_data):
         # boost to the jet rest frame to avoid large boosts
         jet = scatter(
             fourmomenta[~is_spurion], batch[~is_spurion], dim=0, reduce="sum"
-        ).index_select(0, batch[~is_spurion])
+        ).index_select(0, batch)
         jet_boost = restframe_boost(jet)
         fourmomenta = torch.einsum("ijk,ik->ij", jet_boost, fourmomenta)
 
     jet = scatter(fourmomenta[~is_spurion], batch[~is_spurion], dim=0, reduce="sum").index_select(
-        0, batch[~is_spurion]
+        0, batch
     )
     tagging_features = get_tagging_features(
         fourmomenta,
