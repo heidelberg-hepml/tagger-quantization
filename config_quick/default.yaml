@@ -36,9 +36,16 @@ inputquant:
  use: false
  bits: 8
  quantizer: float
- static: true
  quant_per_channel: false
  match_weightquant: true
+
+ static:
+   use: false
+   method: cma
+   beta: 0.99 # for ema
+   quantile: 1e-3
+   observer_start: 0
+   observer_stop: -1
 
  mlp: true
  attn: true

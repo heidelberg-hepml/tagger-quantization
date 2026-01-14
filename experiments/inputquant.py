@@ -325,7 +325,8 @@ class Observer(torch.nn.Module):
         self.beta = beta
         self.observation_count = 0
         self.obs_start = obs_start
-        self.obs_stop = obs_stop
+        self.obs_stop = obs_stop if obs_stop > 0 else float("inf")
+        assert self.obs_start < self.obs_stop, "observer_start must be less than observer_stop"
         self.register_buffer("min_val", None)
         self.register_buffer("max_val", None)
 
