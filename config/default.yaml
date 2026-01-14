@@ -41,7 +41,7 @@ inputquant:
 
  static:
    use: false
-   ema: true
+   method: cma
    beta: 0.99
    quantile: 1e-3
    observer_start: 0

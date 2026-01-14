@@ -17,7 +17,7 @@ from parq.quant import (
 )
 from parq.quant.uniform import AsymUnifQuantizer
 
-from experiments.floatquant import FloatQuantizer
+from experiments.floatquant import FloatQuantizer, IntQuantizer
 
 
 def get_quantizer(name, bits):
@@ -35,6 +35,8 @@ def get_quantizer(name, bits):
     elif name == "float":
         assert bits in [4, 6, 8, 16], "Float quantizer only supports 4, 6, 8 or 16 bits"
         return FloatQuantizer(bits)
+    elif name == "int":
+        return IntQuantizer(bits)
     else:
         raise ValueError(f"Unknown quantizer {name}")
 
