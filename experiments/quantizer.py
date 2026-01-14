@@ -122,11 +122,14 @@ class IntQuantizer(Quantizer):
         Args:
             bits: 8 bits
             center: subtract mean before quantization
+            signed: whether to use signed integers
         """
-        super().__init__(center=center)
 
         # Kept for compatibility with parq interface
-        assert center is False, "Mean centering not supported for IntQuantizer."
+        assert center is False, "Mean centering not supported for IntQuantizer "
+        "because we use zeropoint shifting. Use PARQ AsymUniformQuantizer instead."
+
+        super().__init__(center=center)
 
         self.bits = bits
         if signed:
