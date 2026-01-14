@@ -8,8 +8,8 @@ from lloca.framesnet.equi_frames import LearnedFrames
 from torch import Tensor
 from torch.nn import Conv1d, Linear, Module
 
-from experiments.floatquant import IntQuantizer
 from experiments.parq import get_quantizer
+from experiments.quantizer import IntQuantizer
 
 
 def input_quantize(model, modelname, cfg_inputs):

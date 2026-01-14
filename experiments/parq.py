@@ -17,7 +17,7 @@ from parq.quant import (
 )
 from parq.quant.uniform import AsymUnifQuantizer
 
-from experiments.floatquant import FloatQuantizer, IntQuantizer
+from experiments.quantizer import FloatQuantizer, IntQuantizer
 
 
 def get_quantizer(name, bits):
