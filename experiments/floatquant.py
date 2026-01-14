@@ -2,8 +2,6 @@ import torch
 from parq.quant import Quantizer
 from torch import Tensor
 
-from experiments.logger import LOGGER
-
 
 class FloatQuantizer(Quantizer):
     """Float quantizer for FP16, E4M3FN (8-bit), E3M2FN (6-bit) and E2M1FN (4-bit)."""
@@ -119,7 +117,7 @@ class FloatQuantizer(Quantizer):
 
 
 class IntQuantizer(Quantizer):
-    def __init__(self, bits: int, center: bool = False):
+    def __init__(self, bits: int, center: bool = False, signed: bool = True):
         """
         Args:
             bits: 8 bits
@@ -131,8 +129,12 @@ class IntQuantizer(Quantizer):
         assert center is False, "Mean centering not supported for IntQuantizer."
 
         self.bits = bits
-        self.qmin = -(2 ** (bits - 1))
-        self.qmax = 2 ** (bits - 1) - 1
+        if signed:
+            self.qmin = -(2 ** (bits - 1))
+            self.qmax = 2 ** (bits - 1) - 1
+        else:
+            self.qmin = 0
+            self.qmax = 2**bits - 1
 
     def get_quant_size(self, b: int) -> int:
         """Return number of quantization values."""
@@ -147,8 +149,6 @@ class IntQuantizer(Quantizer):
         min_val: Tensor | None = None,
         max_val: Tensor | None = None,
     ) -> tuple[Tensor, Tensor]:
-        LOGGER.info(f"IntQuantizer.quantize called with min_val={min_val}, max_val={max_val}")
-
         assert b == self.bits
 
         q = p.detach().clone()
