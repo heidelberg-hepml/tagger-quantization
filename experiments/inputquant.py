@@ -141,19 +141,19 @@ class QuantLayer(Module):
         self.match_weightquant = match_weightquant
         self.dim = 1 if quant_per_channel else None
         super().__init__(*args, **kwargs)
-        self.static = static["use"]
+        self.static = static.get("use", False)
         if self.static:
             assert isinstance(self.quantizer, IntQuantizer), (
                 "Static quantization only supported for IntQuantizer"
             )
-        self.observer = Observer(
-            method=static["method"],
-            dim=self.dim,
-            quantile=static["quantile"],
-            beta=static["beta"],
-            obs_start=static["observer_start"],
-            obs_stop=static["observer_stop"],
-        )
+            self.observer = Observer(
+                method=static["method"],
+                dim=self.dim,
+                quantile=static["quantile"],
+                beta=static["beta"],
+                obs_start=static["observer_start"],
+                obs_stop=static["observer_stop"],
+            )
 
     def ste_quantize(self, input: Tensor, observe: bool = True) -> Tensor:
         """
