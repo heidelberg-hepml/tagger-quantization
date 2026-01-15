@@ -29,6 +29,10 @@ Download [JetClass dataset](https://zenodo.org/records/6619768) and put its path
 
 Table 1: Standard top tagging
 ```bash
+# ParT new 'longer' vs literature config
+python run.py -cp config model=tag_ParT training=top_ParT # literature config
+python run.py -cp config model=tag_ParT training=top_slim # 'longer' config
+
 # Standard L-GATr-slim
 python run.py -cp config model=tag_slim training=top_slim
 
@@ -115,6 +119,7 @@ python run.py -cp config model=tag_top_transformer training=top_transformer trai
 
 # Repeat the five quantization levels for each network
 # with training.scheduler=CosineAnnealingLR for tag_transformer and fp8+PARQ/STE
+python run.py -cp config model=tag_ParT training=top_slim
 python run.py -cp config model=tag_top_transformer model/framesnet=learnedpd training=top_transformer
 python run.py -cp config model=tag_slim training=top_slim
 ```
