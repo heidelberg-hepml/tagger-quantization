@@ -453,7 +453,7 @@ def get_energy_cost_7nm_Horowitz(mul_op, dtype):
         return 1.310 if mul_op else 0.380
     elif dtype == "float16":
         return 0.340 if mul_op else 0.160
-    elif dtype == "bfloat16" or dtype == "float8":
+    elif dtype == "bfloat16":
         return 0.210 if mul_op else 0.110
     elif dtype == "int32":
         return 1.480 if mul_op else 0.030
