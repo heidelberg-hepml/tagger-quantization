@@ -114,3 +114,66 @@ class FloatQuantizer(Quantizer):
         full = [-v for v in reversed(vals)] + vals
 
         return torch.tensor(full, dtype=torch.float32)
+
+
+class IntQuantizer(Quantizer):
+    def __init__(self, bits: int, center: bool = False, signed: bool = True):
+        """
+        Args:
+            bits: 8 bits
+            center: subtract mean before quantization
+            signed: whether to use signed integers
+        """
+
+        # Kept for compatibility with parq interface
+        assert center is False, "Mean centering not supported for IntQuantizer "
+        "because we use zeropoint shifting. Use PARQ AsymUniformQuantizer instead."
+
+        super().__init__(center=center)
+
+        self.bits = bits
+        if signed:
+            self.qmin = -(2 ** (bits - 1))
+            self.qmax = 2 ** (bits - 1) - 1
+        else:
+            self.qmin = 0
+            self.qmax = 2**bits - 1
+
+    def get_quant_size(self, b: int) -> int:
+        """Return number of quantization values."""
+        assert b == self.bits
+        return self.qmax - self.qmin + 1
+
+    def quantize(
+        self,
+        p: Tensor,
+        b: int,
+        dim: int | None = None,
+        min_val: Tensor | None = None,
+        max_val: Tensor | None = None,
+    ) -> tuple[Tensor, Tensor]:
+        assert b == self.bits
+
+        q = p.detach().clone()
+
+        # Compute scale and zero point
+        if min_val is None or max_val is None:
+            if dim is None:
+                min_val, max_val = q.min(), q.max()
+            else:
+                min_val, max_val = q.amin(dim=dim, keepdim=True), q.amax(dim=dim, keepdim=True)
+
+        scale = (max_val - min_val) / (self.qmax - self.qmin)
+        scale = torch.where(scale > 0, scale, torch.ones_like(scale))
+
+        zeropoint = torch.round(self.qmin - min_val / scale)
+        zeropoint = torch.clamp(zeropoint, self.qmin, self.qmax)
+
+        # Quantize
+        q_int = torch.clamp(torch.round(q / scale) + zeropoint, self.qmin, self.qmax)
+        q_dequant = (q_int - zeropoint) * scale
+
+        Q = torch.arange(self.qmin, self.qmax + 1, device=p.device, dtype=p.dtype)
+        Q = (Q - zeropoint) * scale
+
+        return q_dequant, Q
