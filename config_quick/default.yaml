@@ -42,7 +42,7 @@ inputquant:
  static:
    use: false
    method: absolute
-   beta: 0.99 # for ema
+   beta: null
    quantile: 1e-3
    observer_start: 0
    observer_stop: -1
