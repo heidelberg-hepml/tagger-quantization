@@ -150,12 +150,12 @@ class QuantLayer(Module):
                 method=static["method"],
                 dim=self.dim,
                 quantile=static["quantile"],
-                beta=static["beta"],
+                beta=static["beta"] if static["method"] == "ema" else None,
                 obs_start=static["observer_start"],
                 obs_stop=static["observer_stop"],
             )
 
-    def ste_quantize(self, input: Tensor, observe: bool = True) -> Tensor:
+    def ste_quantize(self, input: Tensor, is_weight: bool = False) -> Tensor:
         """
         Straight-Through Estimator to quantize activations and weights
         """
@@ -168,8 +168,9 @@ class QuantLayer(Module):
         else:
             flat = input
         with torch.no_grad():
-            if self.static and observe:
-                self.observer(flat)
+            if self.static and not is_weight:
+                if self.training:
+                    self.observer(flat)
                 flat_q, _ = self.quantizer.quantize(
                     flat, self.bits, self.dim, self.observer.min_val, self.observer.max_val
                 )
@@ -185,7 +186,7 @@ class QuantLayer(Module):
         for param in self.parameters():
             original_params.append(param.data.clone())
             if self.match_weightquant:
-                param.data = self.ste_quantize(param.data, observe=False)
+                param.data = self.ste_quantize(param.data, is_weight=True)
         try:
             yield
         finally:
@@ -314,7 +315,7 @@ class Observer(torch.nn.Module):
         method: str = "absolute",
         dim: int | None = None,
         quantile: float = 0,
-        beta: float = 1.0,
+        beta: float | None = None,
         obs_start: int = 0,
         obs_stop: int = 0,
     ):
@@ -323,6 +324,8 @@ class Observer(torch.nn.Module):
         self.dim = dim
         self.quantile = quantile
         self.beta = beta
+        if self.method == "ema":
+            assert self.beta is not None, "Beta must be provided for EMA observer"
         self.observation_count = 0
         self.obs_start = obs_start
         self.obs_stop = obs_stop if obs_stop > 0 else float("inf")
@@ -330,17 +333,14 @@ class Observer(torch.nn.Module):
         self.register_buffer("min_val", None)
         self.register_buffer("max_val", None)
 
-    def observe(self, input: Tensor):
-        # quantile function has a bound on input numel
-        if self.dim is None:
-            indices = torch.randperm(input.numel(), device=input.device)[:100000]
-            sample = input.flatten()[indices]
-        else:
-            indices = torch.randperm(input.size(0), device=input.device)[:100000]
-            sample = input[indices]
-        q_min = torch.quantile(sample, q=self.quantile, dim=self.dim, keepdim=True)
-        q_max = torch.quantile(sample, q=1 - self.quantile, dim=self.dim, keepdim=True)
-        self.update(q_min, q_max)
+    def _load_from_state_dict(
+        self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs
+    ) -> None:
+        self.min_val = state_dict.get(prefix + "min_val", None)
+        self.max_val = state_dict.get(prefix + "max_val", None)
+        return super()._load_from_state_dict(
+            state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs
+        )
 
     def init_vals(self, input: Tensor):
         if self.dim is None:
@@ -354,14 +354,17 @@ class Observer(torch.nn.Module):
             self.min_val = torch.quantile(sample, q=self.quantile, dim=self.dim, keepdim=True)
             self.max_val = torch.quantile(sample, q=1 - self.quantile, dim=self.dim, keepdim=True)
 
-    def _load_from_state_dict(
-        self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs
-    ) -> None:
-        self.min_val = state_dict.get(prefix + "min_val", None)
-        self.max_val = state_dict.get(prefix + "max_val", None)
-        return super()._load_from_state_dict(
-            state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs
-        )
+    def observe(self, input: Tensor):
+        # quantile function has a bound on input numel
+        if self.dim is None:
+            indices = torch.randperm(input.numel(), device=input.device)[:100000]
+            sample = input.flatten()[indices]
+        else:
+            indices = torch.randperm(input.size(0), device=input.device)[:100000]
+            sample = input[indices]
+        q_min = torch.quantile(sample, q=self.quantile, dim=self.dim, keepdim=True)
+        q_max = torch.quantile(sample, q=1 - self.quantile, dim=self.dim, keepdim=True)
+        self.update(q_min, q_max)
 
     def update(self, new_min: Tensor, new_max: Tensor):
         if self.method == "ema":
