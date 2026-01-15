@@ -374,6 +374,8 @@ class Observer(torch.nn.Module):
         elif self.method == "absolute":
             self.min_val = torch.min(self.min_val, new_min)
             self.max_val = torch.max(self.max_val, new_max)
+        else:
+            raise ValueError(f"Unknown observer method: {self.method}")
 
     @torch.no_grad()
     def forward(self, input: Tensor):

@@ -41,7 +41,7 @@ inputquant:
 
  static:
    use: false
-   method: cma
+   method: absolute
    beta: 0.99 # for ema
    quantile: 1e-3
    observer_start: 0
