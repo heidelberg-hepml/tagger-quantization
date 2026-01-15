@@ -331,17 +331,37 @@ class Observer(torch.nn.Module):
         self.register_buffer("max_val", None)
 
     def observe(self, input: Tensor):
-        q_min = torch.quantile(input, q=self.quantile, dim=self.dim, keepdim=True)
-        q_max = torch.quantile(input, q=1 - self.quantile, dim=self.dim, keepdim=True)
+        # quantile function has a bound on input numel
+        if self.dim is None:
+            indices = torch.randperm(input.numel(), device=input.device)[:100000]
+            sample = input.flatten()[indices]
+        else:
+            indices = torch.randperm(input.size(0), device=input.device)[:100000]
+            sample = input[indices]
+        q_min = torch.quantile(sample, q=self.quantile, dim=self.dim, keepdim=True)
+        q_max = torch.quantile(sample, q=1 - self.quantile, dim=self.dim, keepdim=True)
         self.update(q_min, q_max)
 
     def init_vals(self, input: Tensor):
         if self.dim is None:
-            self.min_val = torch.quantile(input, q=self.quantile)
-            self.max_val = torch.quantile(input, q=1 - self.quantile)
+            indices = torch.randperm(input.numel(), device=input.device)[:100000]
+            sample = input.flatten()[indices]
+            self.min_val = torch.quantile(sample, q=self.quantile)
+            self.max_val = torch.quantile(sample, q=1 - self.quantile)
         else:
-            self.min_val = torch.quantile(input, q=self.quantile, dim=self.dim, keepdim=True)
-            self.max_val = torch.quantile(input, q=1 - self.quantile, dim=self.dim, keepdim=True)
+            indices = torch.randperm(input.size(0), device=input.device)[:100000]
+            sample = input[indices]
+            self.min_val = torch.quantile(sample, q=self.quantile, dim=self.dim, keepdim=True)
+            self.max_val = torch.quantile(sample, q=1 - self.quantile, dim=self.dim, keepdim=True)
+
+    def _load_from_state_dict(
+        self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs
+    ) -> None:
+        self.min_val = state_dict.get(prefix + "min_val", None)
+        self.max_val = state_dict.get(prefix + "max_val", None)
+        return super()._load_from_state_dict(
+            state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs
+        )
 
     def update(self, new_min: Tensor, new_max: Tensor):
         if self.method == "ema":
@@ -352,12 +372,8 @@ class Observer(torch.nn.Module):
             self.min_val = (self.min_val * (n - 1) + new_min) / n
             self.max_val = (self.max_val * (n - 1) + new_max) / n
         elif self.method == "absolute":
-            self.min_val = torch.min(
-                self.min_val, torch.tensor(new_min, device=self.min_val.device)
-            )
-            self.max_val = torch.max(
-                self.max_val, torch.tensor(new_max, device=self.max_val.device)
-            )
+            self.min_val = torch.min(self.min_val, new_min)
+            self.max_val = torch.max(self.max_val, new_max)
 
     @torch.no_grad()
     def forward(self, input: Tensor):
