@@ -10,9 +10,11 @@ ARCHNAMES = [
 ]
 DTYPES = [
     ("float32", "float32"),
-    ("float16", "float16"),
+    ("bfloat16", "bfloat16"),
     ("float8", "float8"),
     ("float8", "ternary"),
+    ("int8", "int8"),
+    ("int8", "ternary"),
 ]
 
 

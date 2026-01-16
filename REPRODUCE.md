@@ -29,6 +29,10 @@ Download [JetClass dataset](https://zenodo.org/records/6619768) and put its path
 
 Table 1: Standard top tagging
 ```bash
+# ParT new 'longer' vs literature config
+python run.py -cp config model=tag_ParT training=top_ParT # literature config
+python run.py -cp config model=tag_ParT training=top_slim # 'longer' config
+
 # Standard L-GATr-slim
 python run.py -cp config model=tag_slim training=top_slim
 
@@ -115,6 +119,7 @@ python run.py -cp config model=tag_top_transformer training=top_transformer trai
 
 # Repeat the five quantization levels for each network
 # with training.scheduler=CosineAnnealingLR for tag_transformer and fp8+PARQ/STE
+python run.py -cp config model=tag_ParT training=top_slim
 python run.py -cp config model=tag_top_transformer model/framesnet=learnedpd training=top_transformer
 python run.py -cp config model=tag_slim training=top_slim
 ```
@@ -128,6 +133,9 @@ python run.py -cp config model=tag_transformer_1k training=top_1k model.use_amp=
 # Repeat the three quantization levels for the following networks
 python run.py -cp config model=tag_transformer_1k training=top_1k model/framesnet=learnedpd model/framesnet/equivectors=equimlp_1k
 python run.py -cp config model=tag_transformer_1k training=top_1k model/framesnet=learnedpd model/framesnet/equivectors=equimlp_1k model.framesnet.is_global=true
+
+# Repeat the three quantization levels for the three networks with less than 30 jet constituents
+python run.py -cp config model=tag_transformer_1k training=top_1k data.max_particles=30
 ```
 
 ### 4) Estimating computational cost

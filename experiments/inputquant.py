@@ -345,12 +345,12 @@ class Observer(torch.nn.Module):
     def init_vals(self, input: Tensor):
         if self.dim is None:
             indices = torch.randperm(input.numel(), device=input.device)[:100000]
-            sample = input.flatten()[indices]
+            sample = input.flatten()[indices].to(torch.float32)
             self.min_val = torch.quantile(sample, q=self.quantile)
             self.max_val = torch.quantile(sample, q=1 - self.quantile)
         else:
             indices = torch.randperm(input.size(0), device=input.device)[:100000]
-            sample = input[indices]
+            sample = input[indices].to(torch.float32)
             self.min_val = torch.quantile(sample, q=self.quantile, dim=self.dim, keepdim=True)
             self.max_val = torch.quantile(sample, q=1 - self.quantile, dim=self.dim, keepdim=True)
 
@@ -358,10 +358,10 @@ class Observer(torch.nn.Module):
         # quantile function has a bound on input numel
         if self.dim is None:
             indices = torch.randperm(input.numel(), device=input.device)[:100000]
-            sample = input.flatten()[indices]
+            sample = input.flatten()[indices].to(torch.float32)
         else:
             indices = torch.randperm(input.size(0), device=input.device)[:100000]
-            sample = input[indices]
+            sample = input[indices].to(torch.float32)
         q_min = torch.quantile(sample, q=self.quantile, dim=self.dim, keepdim=True)
         q_max = torch.quantile(sample, q=1 - self.quantile, dim=self.dim, keepdim=True)
         self.update(q_min, q_max)
