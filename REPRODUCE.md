@@ -133,6 +133,9 @@ python run.py -cp config model=tag_transformer_1k training=top_1k model.use_amp=
 # Repeat the three quantization levels for the following networks
 python run.py -cp config model=tag_transformer_1k training=top_1k model/framesnet=learnedpd model/framesnet/equivectors=equimlp_1k
 python run.py -cp config model=tag_transformer_1k training=top_1k model/framesnet=learnedpd model/framesnet/equivectors=equimlp_1k model.framesnet.is_global=true
+
+# Repeat the three quantization levels for the three networks with less than 30 jet constituents
+python run.py -cp config model=tag_transformer_1k training=top_1k data.max_particles=30
 ```
 
 ### 4) Estimating computational cost
