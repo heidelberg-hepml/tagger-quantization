@@ -40,11 +40,11 @@ inputquant:
  match_weightquant: true
 
  static:
-   use: true
-   method: absolute
-   beta: null
+   use: false
+   method: ema
+   beta: 0.999
    quantile: 1e-3
-   observer_start: 0
+   observer_start: 10000
    observer_stop: -1
 
  mlp: true

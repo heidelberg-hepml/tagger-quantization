@@ -128,7 +128,7 @@ Figure 6: Performance over bit operations for small taggers
 ```bash
 python run.py -cp config model=tag_transformer_1k training=top_1k
 python run.py -cp config model=tag_transformer_1k training=top_1k model.use_amp=true
-python run.py -cp config model=tag_transformer_1k training=top_1k model.use_amp=true inputquant.use=true
+python run.py -cp config model=tag_transformer_1k training=top_1k model.use_amp=true inputquant.use=true inputquant.static.use=true
 
 # Repeat the three quantization levels for the following networks
 python run.py -cp config model=tag_transformer_1k training=top_1k model/framesnet=learnedpd model/framesnet/equivectors=equimlp_1k
