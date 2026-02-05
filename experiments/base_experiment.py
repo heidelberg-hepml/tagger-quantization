@@ -585,6 +585,8 @@ class BaseExperiment:
                 yield from iterable
                 epoch += 1
 
+        self.nonfinite_loss_counter = 0
+
         iterator = iter(cycle(self.train_loader))
         for step in range(self.cfg.training.iterations):
             # training
@@ -755,6 +757,13 @@ class BaseExperiment:
 
         if not torch.isfinite(loss):
             LOGGER.warning(f"Loss is nonfinite (loss={loss}) at iteration {step}")
+            self.nonfinite_loss_counter += 1
+            if self.nonfinite_loss_counter >= 5:
+                raise ValueError(
+                    f"Loss has been nonfinite for {self.nonfinite_loss_counter} consecutive iterations, aborting"
+                )
+        else:
+            self.nonfinite_loss_counter = 0
 
         # collect metrics
         if self.world_size > 1:
