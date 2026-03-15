@@ -149,7 +149,8 @@ class JetClassTaggingExperiment(TaggingExperiment):
         self.init_standardization()
 
     @torch.no_grad()
-    def _evaluate_single(self, loader, title, mode, step=None):
+    def _evaluate_single(self, loader, title, mode, step=None, quantized=False):
+        assert not quantized, "quantizated evaluation not implemented for JetClass"
         assert mode in ["val", "eval"]
 
         if mode == "eval":
