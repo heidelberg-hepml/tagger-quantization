@@ -127,8 +127,8 @@ def main():
         help="Symmetry group to test. 'auto' derives the residual symmetry from the config "
         "(spurions + tagging_features). Override only for debugging.",
     )
-    parser.add_argument("--n_jets", type=int, default=32, help="Number of jets to test")
-    parser.add_argument("--n_transforms", type=int, default=5, help="Random transforms to apply")
+    parser.add_argument("--n_jets", type=int, default=128, help="Number of jets to test")
+    parser.add_argument("--n_transforms", type=int, default=16, help="Random transforms to apply")
     parser.add_argument(
         "--per_jet",
         action="store_true",
@@ -237,7 +237,6 @@ def main():
         "per_jet_transform": args.per_jet,
         "std_eta": args.std_eta if group in BOOST_GROUPS else None,
         "seed": args.seed,
-        "output_reference": stats(y0),  # spread of the untransformed logits
         "absolute_error": metric_block(abs_err),  # |y(g.x) - y(x)|, logit units
         "relative_error": metric_block(rel_err),  # |y(g.x) - y(x)| / |y(x)|
         "absolute_error_prob": metric_block(abs_err_prob),  # |p(g.x) - p(x)|
@@ -253,10 +252,6 @@ def main():
     abs_p = summary["absolute_error_prob"]["overall"]
     rel_p = summary["relative_error_prob"]["overall"]
     print(f"\nEquivariance summary: group={group}, jets={n_jets}, transforms={args.n_transforms}")
-    print(
-        f"  output (reference) mean / std    : {summary['output_reference']['mean']:.4e}"
-        f" / {summary['output_reference']['std']:.4e}"
-    )
     print(f"  logit  absolute error mean / std : {abs_o['mean']:.4e} / {abs_o['std']:.4e}")
     print(f"  logit  relative error mean / std : {rel_o['mean']:.4e} / {rel_o['std']:.4e}")
     print(f"  prob   absolute error mean / std : {abs_p['mean']:.4e} / {abs_p['std']:.4e}")
