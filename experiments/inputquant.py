@@ -2,7 +2,7 @@ from contextlib import contextmanager, nullcontext
 
 import torch
 from lgatr.layers import EquiLinear
-from lgatr.nets.lgatr_slim import Linear as SlimEquiLinear
+from lgatr.layers.slim_layers import SlimLinear
 from lloca.equivectors import MLPVectors
 from lloca.framesnet.equi_frames import LearnedFrames
 from torch import Tensor
@@ -109,8 +109,8 @@ def input_quantize_module(module, cfg):
                 **quant_kwargs,
             )
             module._modules[name] = new_layer
-        elif isinstance(child, SlimEquiLinear):
-            new_layer = QuantSlimEquiLinear(
+        elif isinstance(child, SlimLinear):
+            new_layer = QuantSlimLinear(
                 in_v_channels=child._in_v_channels,
                 out_v_channels=child._out_v_channels,
                 in_s_channels=child._in_s_channels,
@@ -280,7 +280,7 @@ class QuantEquiLinear(QuantLayer, EquiLinear):
         return output_mv, output_s
 
 
-class QuantSlimEquiLinear(QuantLayer, SlimEquiLinear):
+class QuantSlimLinear(QuantLayer, SlimLinear):
     def __init__(
         self,
         *args,
@@ -305,7 +305,7 @@ class QuantSlimEquiLinear(QuantLayer, SlimEquiLinear):
         vectors = QuantLayer.ste_quantize(self, vectors)
         scalars = QuantLayer.ste_quantize(self, scalars)
         with self.quantize_params() if self.match_weightquant else nullcontext():
-            vectors_out, scalars_out = SlimEquiLinear.forward(self, vectors, scalars)
+            vectors_out, scalars_out = SlimLinear.forward(self, vectors, scalars)
         return vectors_out, scalars_out
 
 

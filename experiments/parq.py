@@ -116,7 +116,9 @@ def init_param_groups_transformer(model, cfg):
         params_attn += list(block.attention.parameters())
         params_mlp += list(block.mlp.parameters())
 
-    params_noq = []
+    # anything not covered above should not be quantized (e.g. norm params)
+    collected = {id(p) for p in params_in + params_out + params_attn + params_mlp}
+    params_noq = [p for p in model.net.parameters() if id(p) not in collected]
 
     if isinstance(model.framesnet, LearnedFrames):
         params_framesnet, params_framesnet_inout = init_param_groups_framesnet(model.framesnet)
