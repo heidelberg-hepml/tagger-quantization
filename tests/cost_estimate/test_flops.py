@@ -78,7 +78,7 @@ def test_transformer(framesnet, seqlen, attn_reps, num_heads, mlp_ratio, attn_ra
             "data.dataset=mini",
             "model.net.num_blocks=1",
             f"model.net.mlp_factor={mlp_ratio}",
-            f"model.net.attention_factor={attn_ratio}",
+            f"+model.net.attention_factor={attn_ratio}",
             f"model.net.attn_reps={attn_reps}",
             f"model.net.num_heads={num_heads}",
         ]
@@ -124,8 +124,8 @@ def test_lgatr(seqlen, hidden_mv_channels, hidden_s_channels, mlp_ratio, attn_ra
             "training.batchsize=1",
             "data.dataset=mini",
             "model.net.num_blocks=1",
-            f"model.net.mlp.increase_hidden_channels={mlp_ratio}",
-            f"model.net.attention.increase_hidden_channels={attn_ratio}",
+            f"model.net.mlp.mlp_ratio={mlp_ratio}",
+            f"model.net.attention.attn_ratio={attn_ratio}",
             f"model.net.hidden_mv_channels={hidden_mv_channels}",
             f"model.net.hidden_s_channels={hidden_s_channels}",
         ]
@@ -180,7 +180,7 @@ def test_slim(seqlen, hidden_v_channels, hidden_s_channels, mlp_ratio, attn_rati
         cfg = hydra.compose(config_name="toptagging", overrides=overrides)
         exp = TopTaggingExperiment(cfg)
 
-    architecture = "lorentztransformer"
+    architecture = "lgatr-slim"
     flops_estimate, flops_measured = execute(exp, architecture, arch_kwargs, seqlen)
 
     ratio = (flops_estimate / flops_measured - 1) * 100
