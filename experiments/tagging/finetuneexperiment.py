@@ -2,8 +2,7 @@ import os
 
 import torch
 from hydra.core.hydra_config import HydraConfig
-from lgatr.layers.linear import EquiLinear
-from lgatr.layers.slim_layers import SlimLinear
+from lgatr.layers import EquiLinear, SlimLinear
 from omegaconf import OmegaConf, open_dict
 from torch_ema import ExponentialMovingAverage
 
@@ -106,6 +105,7 @@ class TopTaggingFineTuneExperiment(TopTaggingExperiment):
             self.model.net.linear_out = EquiLinear(
                 in_mv_channels=self.cfg.model.net.hidden_mv_channels,
                 out_mv_channels=self.num_outputs,
+                primitives=self.model.net.primitives,
                 in_s_channels=self.cfg.model.net.hidden_s_channels,
                 out_s_channels=self.cfg.model.net.out_s_channels,
             ).to(self.device)

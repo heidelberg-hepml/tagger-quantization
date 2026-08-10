@@ -103,6 +103,7 @@ def input_quantize_module(module, cfg):
             new_layer = QuantEquiLinear(
                 in_mv_channels=child._in_mv_channels,
                 out_mv_channels=child._out_mv_channels,
+                primitives=child.primitives,
                 in_s_channels=(child._in_s_channels if child._in_s_channels is not None else 0),
                 out_s_channels=(child._out_s_channels if child._out_s_channels is not None else 0),
                 bias=child._bias,
